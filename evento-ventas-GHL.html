@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evento M&Y — Gestión de Ventas</title>
+<style>
+/* System fonts */
+
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface2: #f9fafb;
+  --border: #e5e7eb;
+  --border2: #d1d5db;
+  --primary: #0055fb;
+  --primary-dark: #0041c4;
+  --primary-light: #eff4ff;
+  --primary-border: #c7d9ff;
+  --text: #111827;
+  --text2: #374151;
+  --muted: #6b7280;
+  --muted2: #9ca3af;
+  --red: #ef4444;
+  --red-bg: #fef2f2;
+  --red-border: #fecaca;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --green-border: #bbf7d0;
+  --orange: #ea580c;
+  --orange-bg: #fff7ed;
+  --orange-border: #fed7aa;
+  --purple: #7c3aed;
+  --purple-bg: #f5f3ff;
+  --teal: #0891b2;
+  --teal-bg: #ecfeff;
+  --sidebar-w: 220px;
+  --header-h: 56px;
+  --radius: 8px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow: 0 1px 3px rgba(0,0,0,0.10), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.10), 0 2px 4px -1px rgba(0,0,0,0.06);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── SETUP OVERLAY ── */
+#setup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+#setup-overlay.hidden { display: none; }
+.setup-box {
+  background: var(--surface); border-radius: 12px;
+  padding: 32px 28px; max-width: 540px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow-md);
+}
+.setup-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.setup-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; line-height: 1.6; }
+.step { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; font-size: 13px; line-height: 1.7; }
+.step-head { font-weight: 600; color: var(--text); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.code-block { background: #1e1e2e; border-radius: 6px; padding: 10px 14px; font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: #a6e3a1; margin: 6px 0; white-space: pre; overflow-x: auto; }
+.cfg-input { width: 100%; background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); padding: 9px 12px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; outline: none; margin-top: 4px; }
+.cfg-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.cfg-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+.btn-setup { width: 100%; padding: 11px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 14px; transition: background 0.15s; }
+.btn-setup:hover { background: var(--primary-dark); }
+
+/* ── LOGIN ── */
+#login-screen {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; z-index: 999;
+}
+#login-screen.hidden { display: none; }
+.login-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 40px 36px;
+  width: min(380px, 90vw); text-align: center;
+  box-shadow: var(--shadow-md);
+}
+.login-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.login-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+.live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 5px; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.user-btns { display: flex; flex-direction: column; gap: 10px; }
+.user-btn {
+  padding: 13px 20px; border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; gap: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.user-btn:hover { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+.user-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.av-m { background: #ede9fe; color: #7c3aed; }
+.av-y { background: #dcfce7; color: #16a34a; }
+
+/* ── HEADER ── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  height: var(--header-h);
+  padding: 0 20px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+  gap: 12px;
+}
+.header-brand {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 700; color: var(--text);
+}
+.header-logo {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--primary); display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 800;
+}
+.header-right { display: flex; gap: 8px; align-items: center; }
+
+.badge {
+  font-size: 11px; padding: 3px 8px; border-radius: 5px;
+  font-weight: 600; white-space: nowrap; letter-spacing: 0.2px;
+}
+.badge-user { background: var(--purple-bg); color: var(--purple); border: 1px solid #ddd6fe; }
+.badge-live { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); display: flex; align-items: center; }
+
+.logout-btn {
+  padding: 6px 12px; border-radius: var(--radius);
+  border: 1px solid var(--border2); background: transparent;
+  color: var(--muted); font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: all 0.15s; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+}
+.logout-btn:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+
+/* ── TABS / NAV ── */
+.tabs {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex; gap: 0; overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  padding: 0 16px; height: 44px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 500;
+  color: var(--muted); border: none; background: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.tab:hover:not(.active) { color: var(--text2); }
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+
+/* ── MAIN ── */
+main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── KPI CARDS ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px; margin-bottom: 20px;
+}
+@media(min-width:600px) { .kpi-grid { grid-template-columns: repeat(4, 1fr); } }
+
+.kpi {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+.kpi-value { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+.kpi-value.green { color: var(--green); }
+.kpi-value.blue { color: var(--primary); }
+.kpi-value.teal { color: var(--teal); }
+.kpi-sub { font-size: 11px; color: var(--muted2); margin-top: 4px; }
+.kpi-icon { font-size: 18px; margin-bottom: 8px; }
+
+/* ── SECTION ── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title { font-size: 15px; font-weight: 600; color: var(--text); }
+
+/* ── CARD WRAPPER ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* ── FILTERS ── */
+.filters { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.search-input, .filter-select {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text);
+  padding: 7px 11px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+  font-size: 13px; outline: none; transition: all 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+.search-input { flex: 1; min-width: 180px; }
+.search-input:focus, .filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); box-shadow: var(--shadow-sm); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: var(--surface2); }
+th {
+  padding: 10px 14px; text-align: left;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text2); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafafa; }
+
+.product-name { font-weight: 500; color: var(--text); line-height: 1.3; }
+.product-ref { font-size: 11px; color: var(--muted2); font-family: ui-monospace, Menlo, monospace; margin-top: 1px; }
+.price-cell { font-weight: 600; color: var(--text); font-size: 13px; white-space: nowrap; }
+.cost-cell { color: var(--muted); font-size: 12px; }
+
+/* ── STOCK BADGES ── */
+.stock-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 22px; border-radius: 5px;
+  font-size: 12px; font-weight: 700;
+}
+.stock-ok { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.stock-low { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-border); }
+.stock-out { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+/* ── CATEGORY PILLS ── */
+.cat-pill {
+  font-size: 11px; padding: 3px 8px; border-radius: 20px;
+  font-weight: 600; white-space: nowrap;
+}
+.cat-farmasi { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.cat-farmasi-fra { background: var(--purple-bg); color: var(--purple); border: 1px solid #ddd6fe; }
+.cat-farmasi-per { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.cat-drtuna { background: var(--orange-bg); color: var(--orange); border: 1px solid var(--orange-border); }
+.cat-supl { background: var(--teal-bg); color: var(--teal); border: 1px solid #a5f3fc; }
+
+/* ── BUTTONS ── */
+.action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.btn {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid;
+  cursor: pointer; font-size: 12px; font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; transition: all 0.15s; white-space: nowrap;
+}
+.btn-sell { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.btn-sell:hover { background: var(--primary); color: #fff; }
+.btn-sell:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-edit { border-color: var(--border2); color: var(--muted); background: var(--surface); }
+.btn-edit:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.btn-danger { border-color: var(--red-border); color: var(--red); background: var(--red-bg); }
+.btn-danger:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+.btn-primary {
+  padding: 8px 16px; border-radius: var(--radius);
+  background: var(--primary); color: #fff;
+  border: none; font-weight: 600; font-size: 13px;
+  cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover { background: var(--primary-dark); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(17,24,39,0.4);
+  z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.hidden { display: none; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px;
+  width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow-md);
+}
+.modal-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 18px; }
+.form-group { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; }
+.form-input, .form-select {
+  width: 100%; background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius); color: var(--text); padding: 8px 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; font-size: 13px; outline: none; transition: all 0.15s;
+}
+.form-input:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.btn-cancel {
+  padding: 8px 16px; border-radius: var(--radius); background: transparent;
+  border: 1px solid var(--border2); color: var(--muted); font-size: 13px; cursor: pointer;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; font-weight: 500;
+}
+.btn-cancel:hover { background: var(--surface2); color: var(--text); }
+
+/* ── SALE ROWS ── */
+.sale-row {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px; margin-bottom: 8px;
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s;
+}
+.sale-row:hover { box-shadow: var(--shadow); }
+.sale-product { font-weight: 500; color: var(--text); font-size: 13px; }
+.sale-meta { font-size: 11px; color: var(--muted2); margin-top: 2px; }
+.sale-amount { font-weight: 700; color: var(--text); font-size: 14px; white-space: nowrap; }
+.sale-margin { font-size: 12px; color: var(--green); font-weight: 600; white-space: nowrap; }
+
+/* ── ADD PRODUCT FORM ── */
+.add-product-form {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:500px) { .form-grid { grid-template-columns: 1fr; } }
+
+.margin-preview {
+  background: var(--teal-bg); border: 1px solid #a5f3fc;
+  border-radius: var(--radius); padding: 9px 13px;
+  font-size: 12px; color: var(--teal); margin-top: 10px; font-weight: 500;
+}
+
+/* ── SECTION DIVIDER ── */
+.section-divider {
+  display: flex; align-items: center; gap: 12px; margin: 20px 0 14px;
+}
+.section-divider span {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+}
+.section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── QTY CONTROL ── */
+.qty-control { display: flex; align-items: center; gap: 8px; }
+.qty-btn {
+  width: 30px; height: 30px; border-radius: var(--radius);
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text); cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+.qty-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+.qty-num { font-size: 15px; font-weight: 700; min-width: 28px; text-align: center; color: var(--text); }
+
+.info-row { display: flex; gap: 6px; font-size: 12px; color: var(--muted); margin-bottom: 6px; align-items: baseline; }
+.info-row strong { color: var(--text2); font-weight: 600; min-width: 70px; }
+
+.empty-state { text-align: center; padding: 48px 20px; color: var(--muted); font-size: 14px; }
+.empty-state-icon { font-size: 32px; margin-bottom: 10px; }
+
+/* ── LIVE INDICATOR ── */
+#live-indicator {
+  position: fixed; top: 62px; right: 14px;
+  background: var(--green-bg); border: 1px solid var(--green-border);
+  border-radius: 6px; padding: 5px 10px;
+  font-size: 11px; color: var(--green); font-weight: 600;
+  z-index: 50; opacity: 0; transition: opacity 0.3s;
+  pointer-events: none; box-shadow: var(--shadow-sm);
+}
+#live-indicator.show { opacity: 1; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 20px; right: 16px;
+  background: var(--text); color: #fff;
+  padding: 11px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+  z-index: 9999; transform: translateY(80px); opacity: 0; transition: all 0.3s;
+  max-width: calc(100vw - 32px); box-shadow: var(--shadow-md);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+#toast.error { background: var(--red); }
+
+.loading { text-align:center; padding:32px; color:var(--muted); font-size:13px; }
+
+@media(max-width:500px) {
+  .sale-row { grid-template-columns: 1fr auto; }
+  .sale-margin, .btn-danger { display: none; }
+}
+</style>
+<script>
+// ═══════════════════════════════════════════
+// FIREBASE REST API — sin CDN externo
+// Funciona desde cualquier origen incluyendo claude.ai
+// ═══════════════════════════════════════════
+const FB_API_KEY = "AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s";
+const FB_PROJECT = "evento-my";
+const FB_BASE = `https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`;
+
+// Polling interval for real-time simulation (ms)
+const POLL_MS = 3000;
+
+// Convert Firestore REST value to JS
+function fromFB(val) {
+  if (!val) return null;
+  if (val.stringValue !== undefined) return val.stringValue;
+  if (val.integerValue !== undefined) return parseInt(val.integerValue);
+  if (val.doubleValue !== undefined) return parseFloat(val.doubleValue);
+  if (val.booleanValue !== undefined) return val.booleanValue;
+  if (val.nullValue !== undefined) return null;
+  if (val.timestampValue !== undefined) return val.timestampValue;
+  if (val.mapValue) {
+    const obj = {};
+    for (const [k,v] of Object.entries(val.mapValue.fields||{})) obj[k] = fromFB(v);
+    return obj;
+  }
+  if (val.arrayValue) return (val.arrayValue.values||[]).map(fromFB);
+  return null;
+}
+
+// Convert JS value to Firestore REST value
+function toFB(val) {
+  if (val === null || val === undefined) return {nullValue: null};
+  if (typeof val === 'boolean') return {booleanValue: val};
+  if (typeof val === 'number') {
+    if (Number.isInteger(val)) return {integerValue: String(val)};
+    return {doubleValue: val};
+  }
+  if (typeof val === 'string') return {stringValue: val};
+  if (val instanceof Date) return {timestampValue: val.toISOString()};
+  if (Array.isArray(val)) return {arrayValue: {values: val.map(toFB)}};
+  if (typeof val === 'object') {
+    const fields = {};
+    for (const [k,v] of Object.entries(val)) fields[k] = toFB(v);
+    return {mapValue: {fields}};
+  }
+  return {stringValue: String(val)};
+}
+
+// Parse a Firestore document
+function parseDoc(doc) {
+  if (!doc.name) return null;
+  const id = doc.name.split('/').pop();
+  const data = {};
+  for (const [k,v] of Object.entries(doc.fields||{})) data[k] = fromFB(v);
+  return {id, ...data};
+}
+
+// Convert JS object to Firestore fields
+function toFields(obj) {
+  const fields = {};
+  for (const [k,v] of Object.entries(obj)) fields[k] = toFB(v);
+  return {fields};
+}
+
+// REST helpers
+async function fbGet(path) {
+  const r = await fetch(`${FB_BASE}/${path}?key=${FB_API_KEY}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function fbList(col, orderBy, orderDir='DESCENDING') {
+  let url = `${FB_BASE}/${col}?key=${FB_API_KEY}&pageSize=500`;
+  if (orderBy) url += `&orderBy=${orderBy} ${orderDir}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) { console.warn('fbList error:', r.status); return null; }
+    const data = await r.json();
+    return (data.documents||[]).map(parseDoc).filter(Boolean);
+  } catch(e) {
+    console.warn('fbList fetch failed:', e.message);
+    return null; // null = fetch blocked
+  }
+}
+
+async function fbSet(col, id, obj) {
+  const url = `${FB_BASE}/${col}/${id}?key=${FB_API_KEY}`;
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(toFields(obj))
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function fbUpdate(col, id, obj) {
+  const fields = toFields(obj);
+  const mask = Object.keys(obj).map(k=>`updateMask.fieldPaths=${k}`).join('&');
+  const url = `${FB_BASE}/${col}/${id}?key=${FB_API_KEY}&${mask}`;
+  const r = await fetch(url, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(fields)
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function fbAdd(col, obj) {
+  const url = `${FB_BASE}/${col}?key=${FB_API_KEY}`;
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(toFields(obj))
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function fbDelete(col, id) {
+  const url = `${FB_BASE}/${col}/${id}?key=${FB_API_KEY}`;
+  const r = await fetch(url, {method:'DELETE'});
+  if (!r.ok) throw new Error(await r.text());
+}
+
+// Simple "db" interface to match app code
+const db = {
+  _listeners: {},
+  collection: (col) => ({
+    onSnapshot: (cb) => {
+      // Poll immediately then every POLL_MS
+      let lastHash = '';
+      const poll = async () => {
+        try {
+          const docs = await fbList(col);
+          const hash = JSON.stringify(docs.map(d=>d.id+JSON.stringify(d)));
+          if (hash !== lastHash) {
+            lastHash = hash;
+            cb({ docs, empty: docs.length===0 });
+          }
+        } catch(e) { console.warn('Poll error:', e); }
+      };
+      poll();
+      const id = setInterval(poll, POLL_MS);
+      return () => clearInterval(id); // unsubscribe
+    },
+    orderBy: (field, dir='desc') => ({
+      onSnapshot: (cb) => {
+        let lastHash = '';
+        const poll = async () => {
+          try {
+            const docs = await fbList(col, field, dir==='desc'?'DESCENDING':'ASCENDING');
+            const hash = JSON.stringify(docs.map(d=>d.id));
+            if (hash !== lastHash) {
+              lastHash = hash;
+              cb({ docs, empty: docs.length===0 });
+            }
+          } catch(e) { console.warn('Poll error:', e); }
+        };
+        poll();
+        const id = setInterval(poll, POLL_MS);
+        return () => clearInterval(id);
+      }
+    }),
+    add: (obj) => fbAdd(col, {...obj, timestamp: new Date().toISOString()}),
+    doc: (id) => ({
+      set: (obj) => fbSet(col, id, obj),
+      update: (obj) => fbUpdate(col, id, obj),
+      delete: () => fbDelete(col, id),
+    })
+  }),
+};
+
+window.__firebaseReady = true;
+console.log('Firebase REST client ready');
+</script>
+</head>
+<body>
+
+<!-- SETUP OVERLAY -->
+<div id="setup-overlay" class="hidden">
+  <div class="setup-box">
+    <div class="setup-title">⚡ Conectar Firebase (tiempo real)</div>
+    <div class="setup-sub">Para sincronizar Milena y Yamile en tiempo real necesitas un proyecto Firebase gratuito. Solo se hace una vez desde cualquier computador o celular.</div>
+    <div class="step">
+      <div class="step-head"><span class="step-num">1</span>Crear proyecto Firebase</div>
+      <div style="color:var(--text2)">Ve a <strong style="color:var(--gold)">console.firebase.google.com</strong> → "Agregar proyecto" → nombre: <em>evento-my</em> → desactivar Analytics → Crear</div>
+    </div>
+    <div class="step">
+      <div class="step-head"><span class="step-num">2</span>Crear base de datos Firestore</div>
+      <div style="color:var(--text2)">Menú izquierdo → <strong>Firestore Database</strong> → "Crear base de datos" → modo Producción → elegir región (us-east1) → Listo</div>
+    </div>
+    <div class="step">
+      <div class="step-head"><span class="step-num">3</span>Abrir Reglas y pegar esto → Publicar</div>
+      <div class="code-block">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</div>
+    </div>
+    <div class="step">
+      <div class="step-head"><span class="step-num">4</span>Obtener datos de configuración</div>
+      <div style="color:var(--text2)">Ícono ⚙️ → Configuración del proyecto → "Tus apps" → botón <strong>&lt;/&gt;</strong> → registrar app → copiar valores del <code style="color:var(--gold)">firebaseConfig</code></div>
+    </div>
+    <div style="margin-top:14px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:500">Pega aquí los valores:</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div><div class="cfg-label">apiKey *</div><input class="cfg-input" id="cfg-apiKey" placeholder="AIzaSy..."></div>
+        <div><div class="cfg-label">projectId *</div><input class="cfg-input" id="cfg-projectId" placeholder="evento-my-xxxxx"></div>
+        <div><div class="cfg-label">appId *</div><input class="cfg-input" id="cfg-appId" placeholder="1:123456789:web:abc..."></div>
+      </div>
+      <button class="btn-setup" onclick="applyFirebaseConfig()">Conectar en tiempo real →</button>
+      <div style="text-align:center;margin-top:10px">
+        <button onclick="skipSetup()" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline">Continuar sin Firebase (datos locales, sin sincronización)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE INDICATOR -->
+<div id="live-indicator">↻ Actualizado</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-title">Evento M & Y</div>
+    <div class="login-sub" id="login-sub-text">Gestión de Ventas · Mayo 25–27</div>
+    <div class="user-btns">
+      <button class="user-btn" onclick="login('Milena')">
+        <div class="user-avatar av-m">M</div>
+        Milena
+      </button>
+      <button class="user-btn" onclick="login('Yamile')">
+        <div class="user-avatar av-y">Y</div>
+        Yamile
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-brand">M & Y · Ventas</div>
+  <div class="header-meta">
+    <span class="badge badge-date" id="current-date"></span>
+    <span id="live-badge" style="display:none" class="badge" style="background:#0d2a1a;color:#4ade80;border:1px solid #1a4a2a">● LIVE</span>
+    <span class="badge badge-user" id="user-badge"></span>
+    <button class="logout-btn" onclick="logout()">Cambiar usuario</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('ventas')">📊 Vender</button>
+  <button class="tab" onclick="switchTab('inventario')">📦 Inventario</button>
+  <button class="tab" onclick="switchTab('historial')">🧾 Historial</button>
+  <button class="tab" onclick="switchTab('resumen')">💰 Resumen</button>
+  <button class="tab" onclick="switchTab('admin')">⚙️ Administrar</button>
+</div>
+
+<main>
+
+  <!-- TAB: VENTAS -->
+  <div class="tab-content active" id="tab-ventas">
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <div class="section-header">
+      <div class="section-title">Registrar Venta</div>
+    </div>
+
+    <div class="filters">
+      <input class="search-input" id="search-ventas" placeholder="🔍 Buscar producto..." oninput="renderVentasTable()">
+      <select class="filter-select" id="filter-cat-ventas" onchange="renderVentasTable()">
+        <option value="">Todas las categorías</option>
+        <option value="Farmasi Maquillaje">Maquillaje</option>
+        <option value="Farmasi Fragancias">Fragancias</option>
+        <option value="Farmasi Cuidado Personal">Cuidado Personal</option>
+        <option value="DR C TUNA">DR C TUNA</option>
+        <option value="Suplementos">Suplementos</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th>Precio</th>
+            <th>Costo</th>
+            <th>Margen</th>
+            <th>Stock</th>
+            <th>Vender</th>
+          </tr>
+        </thead>
+        <tbody id="ventas-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: INVENTARIO -->
+  <div class="tab-content" id="tab-inventario">
+    <div class="section-header">
+      <div class="section-title">Inventario Completo</div>
+    </div>
+
+    <div class="filters">
+      <input class="search-input" id="search-inv" placeholder="🔍 Buscar producto..." oninput="renderInventarioTable()">
+      <select class="filter-select" id="filter-cat-inv" onchange="renderInventarioTable()">
+        <option value="">Todas las categorías</option>
+        <option value="Farmasi Maquillaje">Maquillaje</option>
+        <option value="Farmasi Fragancias">Fragancias</option>
+        <option value="Farmasi Cuidado Personal">Cuidado Personal</option>
+        <option value="DR C TUNA">DR C TUNA</option>
+        <option value="Suplementos">Suplementos</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Producto</th>
+            <th>Ref</th>
+            <th>Categoría</th>
+            <th>Precio Venta</th>
+            <th>Costo</th>
+            <th>Margen %</th>
+            <th>Stock</th>
+            <th>Vendidos</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="inv-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: HISTORIAL -->
+  <div class="tab-content" id="tab-historial">
+    <div class="section-header">
+      <div class="section-title">Historial de Ventas</div>
+      <button class="btn-primary" onclick="exportCSV()">⬇ Exportar CSV</button>
+    </div>
+    <div id="historial-list"></div>
+  </div>
+
+  <!-- TAB: RESUMEN -->
+  <div class="tab-content" id="tab-resumen">
+    <div class="section-header">
+      <div class="section-title">Resumen del Evento</div>
+    </div>
+    <div class="kpi-grid" id="resumen-kpis"></div>
+
+    <div class="section-divider"><span>Por Usuario</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Usuario</th><th>Ventas</th><th>Ingresos</th><th>Margen</th></tr></thead>
+        <tbody id="resumen-usuarios"></tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>Por Categoría</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Categoría</th><th>Unidades</th><th>Ingresos</th><th>Costo</th><th>Margen</th></tr></thead>
+        <tbody id="resumen-categorias"></tbody>
+      </table>
+    </div>
+
+    <div class="section-divider"><span>Top Productos</span></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Producto</th><th>Unidades</th><th>Ingresos</th><th>Margen</th></tr></thead>
+        <tbody id="resumen-top"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB: ADMIN -->
+  <div class="tab-content" id="tab-admin">
+    <div class="section-header">
+      <div class="section-title">Agregar Producto</div>
+    </div>
+
+    <div class="add-product-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Nombre del Producto *</label>
+          <input class="form-input" id="new-name" placeholder="Ej: Serum Vitamina C">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referencia / Código</label>
+          <input class="form-input" id="new-ref" placeholder="Ej: 1001234">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría *</label>
+          <select class="form-select" id="new-cat" onchange="autoMargin()">
+            <option value="Farmasi Maquillaje">Farmasi Maquillaje</option>
+            <option value="Farmasi Fragancias">Farmasi Fragancias</option>
+            <option value="Farmasi Cuidado Personal">Farmasi Cuidado Personal</option>
+            <option value="DR C TUNA">DR C TUNA</option>
+            <option value="Suplementos">Suplementos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Marca</label>
+          <input class="form-input" id="new-brand" placeholder="Ej: Farmasi">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Precio de Venta (COP) *</label>
+          <input class="form-input" id="new-price" type="number" placeholder="65800" oninput="autoMargin()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Margen % (auto-calculado)</label>
+          <input class="form-input" id="new-margin" type="number" value="30" oninput="manualMargin()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Stock Inicial</label>
+          <input class="form-input" id="new-stock" type="number" value="2" min="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Presentación</label>
+          <input class="form-input" id="new-presentation" placeholder="Ej: 4ml, 30g">
+        </div>
+      </div>
+      <div class="margin-preview" id="margin-preview">Costo estimado: — | Margen bruto: —</div>
+      <div style="margin-top:14px;">
+        <button class="btn-primary" onclick="addProduct()">+ Agregar Producto</button>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>Gestión de Inventario</span></div>
+    <div class="filters">
+      <input class="search-input" id="search-admin" placeholder="🔍 Buscar producto..." oninput="renderAdminTable()">
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Producto</th><th>Ref</th><th>Precio</th><th>Costo</th><th>Margen</th><th>Stock</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="admin-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL VENTA -->
+<div class="modal-overlay hidden" id="modal-sell">
+  <div class="modal">
+    <div class="modal-title">Registrar Venta</div>
+    <div id="sell-product-info" style="margin-bottom:16px;"></div>
+    <div class="form-group">
+      <label class="form-label">Cantidad</label>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <span class="qty-num" id="sell-qty">1</span>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Precio de Venta (editable)</label>
+      <input class="form-input" id="sell-price" type="number">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notas (opcional)</label>
+      <input class="form-input" id="sell-notes" placeholder="Ej: pago efectivo, descuento, etc.">
+    </div>
+    <div class="margin-preview" id="sell-preview"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-sell')">Cancelar</button>
+      <button class="btn-primary" onclick="confirmSale()">✓ Confirmar Venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PRODUCTO -->
+<div class="modal-overlay hidden" id="modal-edit">
+  <div class="modal">
+    <div class="modal-title">Editar Producto</div>
+    <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <label class="form-label">Nombre</label>
+      <input class="form-input" id="edit-name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Precio de Venta (COP)</label>
+      <input class="form-input" id="edit-price" type="number">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Margen %</label>
+      <input class="form-input" id="edit-margin" type="number">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Stock Actual</label>
+      <input class="form-input" id="edit-stock" type="number" min="0">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-edit')">Cancelar</button>
+      <button class="btn-primary" onclick="saveEdit()">Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let currentUser = null;
+let currentSellId = null;
+let sellQty = 1;
+let products = [];
+let sales = [];
+let useFirebase = false;
+let db = null;
+
+// Local fallback
+function localGet() {
+  const raw = localStorage.getItem('my_local_v4');
+  if (raw) return JSON.parse(raw);
+  return { products: getInitialProducts(), sales: [] };
+}
+function localSave(state) { localStorage.setItem('my_local_v4', JSON.stringify(state)); }
+
+// ═══════════════════════════════════════════
+// FIREBASE SETUP
+// ═══════════════════════════════════════════
+function applyFirebaseConfig() {
+  const apiKey = document.getElementById('cfg-apiKey').value.trim();
+  const projectId = document.getElementById('cfg-projectId').value.trim();
+  const appId = document.getElementById('cfg-appId').value.trim();
+  if (!apiKey || !projectId || !appId) { showToast('Completa los 3 campos', true); return; }
+  localStorage.setItem('my_firebase_cfg', JSON.stringify({
+    apiKey, projectId, appId,
+    authDomain: projectId+'.firebaseapp.com',
+    storageBucket: projectId+'.appspot.com',
+    messagingSenderId: ''
+  }));
+  location.reload();
+}
+
+function skipSetup() {
+  localStorage.setItem('my_skip_setup','1');
+  document.getElementById('setup-overlay').classList.add('hidden');
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+async function initFirebase() {
+  // db is already configured via REST client above
+  useFirebase = true;
+  return true;
+}
+
+async function startListeners() {
+  // Test if Firebase REST is reachable
+  let testOk = false;
+  try {
+    const test = await fbList('products');
+    testOk = test !== null;
+  } catch(e) { testOk = false; }
+
+  if (!testOk) {
+    console.warn('Firebase not reachable — using local storage');
+    useFirebase = false;
+    const state = localGet();
+    products = state.products;
+    sales = state.sales;
+    renderAll();
+    return;
+  }
+
+  // Products listener
+  db.collection('products').onSnapshot(snap => {
+    if (!snap || snap.docs === undefined) return;
+    if (snap.empty) {
+      const prods = getInitialProducts();
+      showToast('Cargando catálogo (' + prods.length + ' productos)...');
+      prods.forEach(p => db.collection('products').doc(p.id).set(p));
+    } else {
+      products = snap.docs;
+      flashLive(); renderAll();
+    }
+  });
+
+  // Sales listener
+  db.collection('sales').orderBy('timestamp', 'desc').onSnapshot(snap => {
+    if (!snap || snap.docs === undefined) return;
+    sales = snap.docs;
+    flashLive(); renderAll();
+  });
+}
+
+function flashLive() {
+  const el = document.getElementById('live-indicator');
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════
+// INITIAL PRODUCTS (catálogo completo)
+// ═══════════════════════════════════════════
+function getInitialProducts() {
+  const farmasi = (name, ref, price, subcategory, presentation='') => ({
+    id: ref || name.replace(/\s/g,'_') + '_' + Math.random().toString(36).slice(2,6),
+    name, ref, price, margin: 30,
+    cost: Math.round(price * 0.70),
+    category: 'Farmasi ' + subcategory,
+    presentation, stock: 2, sold: 0, active: true
+  });
+
+  const drtuna = (name, ref, price, subcategory='', presentation='') => ({
+    id: ref || name.replace(/\s/g,'_') + '_' + Math.random().toString(36).slice(2,6),
+    name, ref, price, margin: 50,
+    cost: Math.round(price * 0.50),
+    category: 'DR C TUNA',
+    subcategory, presentation, stock: 2, sold: 0, active: true
+  });
+
+  return [
+    // ─── FARMASI MAQUILLAJE ───────────────────
+    // LABIOS
+    farmasi('Matte Liquid Lipstick', '1001409-19', 65800, 'Maquillaje', '4ml · 11 tonos'),
+    farmasi('Creamy Lipstick', '1001387-402', 42800, 'Maquillaje', '4g · 15 tonos'),
+    farmasi('Tinted Lip Plumper', '1001497-521', 76900, 'Maquillaje', '8ml · 5 tonos'),
+    farmasi('Ultimate Shine Lip Gloss', '1001403-408', 71500, 'Maquillaje', '8ml · 5 tonos'),
+    farmasi('Lip Liner', '1001461-464', 32900, 'Maquillaje', '0.35g · 3 tonos'),
+    farmasi('BB Glaze Lipstick', '1001423-428', 54900, 'Maquillaje', '4g · 6 tonos'),
+    // OJOS
+    farmasi('Mascara Voluminizadora (12ml)', '1301518', 85000, 'Maquillaje', '12ml'),
+    farmasi('Mascara Ligera (8ml)', '1301322', 42500, 'Maquillaje', '8ml'),
+    farmasi('Infinilash Mascara', '1001503', 98900, 'Maquillaje', '10ml'),
+    farmasi('Eye Pencil', '1001451-460', 41500, 'Maquillaje', '5 tonos'),
+    farmasi('Brow Setting Wax', '1000930', 101000, 'Maquillaje', '25g'),
+    farmasi('Eyebrow & Lash Capixyl Serum', '1301292', 119900, 'Maquillaje', '12ml'),
+    // ROSTRO
+    farmasi('VF X PRO Blur Primer', '1001516', 71300, 'Maquillaje', '25ml'),
+    farmasi('VF X PRO Illuminating Primer', '1001517', 71300, 'Maquillaje', '25ml'),
+    farmasi('VF X PRO Liquid Concealer', '1001375-380', 52700, 'Maquillaje', '5 tonos'),
+    farmasi('VF X PRO Camera Ready Foundation', '1001353-370', 107500, 'Maquillaje', '18 tonos'),
+    farmasi('CC Cream Color Control', '1001557-562', 61400, 'Maquillaje', '5 tonos'),
+    farmasi('BB Cream Beauty Balm', '1001551-555', 52700, 'Maquillaje', '5 tonos'),
+    farmasi('BB Powder', '1001346-351', 93300, 'Maquillaje', '12g · 6 tonos'),
+    farmasi('Contour Stick Bronceador', '9000891', 76900, 'Maquillaje', '4.5g'),
+    farmasi('Highlighter Stick', '9000892', 76900, 'Maquillaje', '4.5g'),
+    farmasi('Blush Stick', '9000887-890', 76900, 'Maquillaje', '4 tonos'),
+    farmasi('Powder Blusher', '1001435-436', 59300, 'Maquillaje', '2 tonos'),
+    farmasi('VF X PRO Time Locker Fixing Spray', '1001519', 41700, 'Maquillaje', '125ml'),
+    // ACCESORIOS
+    farmasi('Brocha para Delinear', '9000940', 35100, 'Maquillaje', 'unidad'),
+    farmasi('Brocha Plana para Definir', '9000941', 35100, 'Maquillaje', 'unidad'),
+    farmasi('Brocha para Difuminar', '9000939', 48300, 'Maquillaje', 'unidad'),
+    farmasi('Brocha para Sombra', '9000938', 35100, 'Maquillaje', 'unidad'),
+    farmasi('Brocha para Corrector', '9000937', 35100, 'Maquillaje', 'unidad'),
+    farmasi('Brocha Angular para Cejas', '9000936', 48300, 'Maquillaje', 'unidad'),
+    farmasi('Brocha para Base de Maquillaje', '9000934', 63600, 'Maquillaje', 'unidad'),
+    farmasi('Brocha Kabuki', '9000935', 63600, 'Maquillaje', 'unidad'),
+    farmasi('Esponja para Maquillaje', '9000942', 41700, 'Maquillaje', 'unidad'),
+    farmasi('Brocha Contouring', '9000933', 63600, 'Maquillaje', 'unidad'),
+
+    // ─── FARMASI FRAGANCIAS ──────────────────
+    { id:'1107491', name:'Hera Eau de Parfum', ref:'1107491', price:138500, margin:30, cost:Math.round(138500*0.70), category:'Farmasi Fragancias', presentation:'65ml · Mujer', stock:2, sold:0, active:true },
+    { id:'1000490', name:'Her Passion Eau de Parfum', ref:'1000490', price:186300, margin:30, cost:Math.round(186300*0.70), category:'Farmasi Fragancias', presentation:'60ml · Mujer', stock:2, sold:0, active:true },
+    { id:'1107522', name:'Baoli Eau de Parfum', ref:'1107522', price:159900, margin:30, cost:Math.round(159900*0.70), category:'Farmasi Fragancias', presentation:'90ml · Hombre', stock:2, sold:0, active:true },
+    { id:'1000489', name:'His Power Eau de Parfum', ref:'1000489', price:186300, margin:30, cost:Math.round(186300*0.70), category:'Farmasi Fragancias', presentation:'100ml · Hombre', stock:2, sold:0, active:true },
+
+    // ─── FARMASI CUIDADO PERSONAL ────────────
+    { id:'1700001', name:'Whitening Pasta Dental', ref:'1700001', price:64000, margin:30, cost:Math.round(64000*0.70), category:'Farmasi Cuidado Personal', presentation:'112g', stock:2, sold:0, active:true },
+    { id:'1000329', name:'Calendula Soap', ref:'1000329', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'125g', stock:2, sold:0, active:true },
+    { id:'1000330', name:'Tea Tree Soap', ref:'1000330', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'125g', stock:2, sold:0, active:true },
+    { id:'1000790', name:'Stay Fresh Deo Roll-On Aqua', ref:'1000790', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
+    { id:'1000789', name:'Stay Fresh Deo Roll-On Fresh', ref:'1000789', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
+    { id:'1000787', name:'Stay Fresh Deo Roll-On Floral', ref:'1000787', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
+    { id:'1000788', name:'Stay Fresh Deo Roll-On Green', ref:'1000788', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
+    { id:'1000786', name:'Stay Fresh Deo Roll-On Cotton', ref:'1000786', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
+
+    // ─── DR C TUNA — RESURFACE ───────────────
+    drtuna('DR C TUNA Resurface Refining Cleanser', '1000277', 173500, 'Resurface', '100ml'),
+    drtuna('DR C TUNA Resurface Hydrasooth Essence', '1000278', 198000, 'Resurface', '100ml'),
+    drtuna('DR C TUNA Resurface Advanced Eye Cream', '1000282', 173500, 'Resurface', '15ml'),
+    drtuna('DR C TUNA Resurface Essential Day Cream', '1000280', 346000, 'Resurface', '50ml'),
+    drtuna('DR C TUNA Resurface Retinol Reviving Serum', '1000279', 319500, 'Resurface', '30ml'),
+    drtuna('DR C TUNA Resurface Reset Night Cream', '1000281', 319500, 'Resurface', '50ml'),
+
+    // ─── DR C TUNA — AGE REVERSIST ───────────
+    drtuna('DR C TUNA Age Reversist Exfoliating Cleanser', '1000276', 159500, 'Age Reversist', '80ml'),
+    drtuna('DR C TUNA Age Reversist Beauty Essence Tonic', '1000270', 170500, 'Age Reversist', '100ml'),
+    drtuna('DR C TUNA Age Reversist Eye Cream', '1000273', 159900, 'Age Reversist', '15ml'),
+    drtuna('DR C TUNA Age Reversist Serum', '1000272', 319500, 'Age Reversist', '30ml'),
+    drtuna('DR C TUNA Age Reversist Rich Moisturizer', '1000271', 202500, 'Age Reversist', '30ml'),
+    drtuna('DR C TUNA Age Reversist All Night Perfecting Cream', '1000269', 293000, 'Age Reversist', '50ml'),
+    drtuna('DR C TUNA Age Reversist Instant Beauty Mask', '1000275', 319500, 'Age Reversist', '0.3ml x30 sachets'),
+
+    // ─── DR C TUNA — LUMI RADIANCE ───────────
+    drtuna('DR C TUNA Lumi Radiance Gel Cleanser', '1000300', 106500, 'Lumi Radiance', '100ml'),
+    drtuna('DR C TUNA Lumi Radiance Brightening Toner', '1000295', 120500, 'Lumi Radiance', '125ml'),
+    drtuna('DR C TUNA Lumi Radiance Eye Balm', '1000299', 85200, 'Lumi Radiance', '20ml'),
+    drtuna('DR C TUNA Lumi Radiance Brightening Serum', '1000298', 198000, 'Lumi Radiance', '30ml'),
+    drtuna('DR C TUNA Lumi Radiance Brightening Cream FPS22', '1000297', 187500, 'Lumi Radiance', '50ml'),
+
+    // ─── DR C TUNA — AQUA ────────────────────
+    drtuna('DR C TUNA Aqua Restoring Gel Cleanser', '1000265', 100000, 'Aqua', '100ml'),
+    drtuna('DR C TUNA Aqua Boosting Hydra Drops', '1000266', 198000, 'Aqua', '30ml'),
+    drtuna('DR C TUNA Aqua Revitalizing Eye Cream', '1000268', 85200, 'Aqua', '20ml'),
+    drtuna('DR C TUNA Aqua Hydrating Cream', '1000267', 227000, 'Aqua', '50ml'),
+
+    // ─── DR C TUNA — CALENDULA ───────────────
+    drtuna('DR C TUNA Calendula Face Wash', '1000283', 67000, 'Calendula', '100ml'),
+    drtuna('DR C TUNA Calendula Face Toner', '1000284', 67000, 'Calendula', '125ml'),
+    drtuna('DR C TUNA Calendula Oil', '1000287', 160000, 'Calendula', '30ml'),
+    drtuna('DR C TUNA Calendula Face Cream', '1000285', 85200, 'Calendula', '50ml'),
+    drtuna('DR C TUNA Calendula Cream Balsam', '1000286', 112900, 'Calendula', '80ml'),
+
+    // ─── DR C TUNA — TEA TREE ────────────────
+    drtuna('DR C TUNA Tea Tree Face Wash', '1000288', 67000, 'Tea Tree', '100ml'),
+    drtuna('DR C TUNA Tea Tree Face Toner', '1000289', 67000, 'Tea Tree', '125ml'),
+    drtuna('DR C TUNA Tea Tree Face Cream', '1000290', 85200, 'Tea Tree', '50ml'),
+    drtuna('DR C TUNA Tea Tree Cream Balsam', '1000291', 112900, 'Tea Tree', '80ml'),
+    drtuna('DR C TUNA Tea Tree Serum', '1000292', 93800, 'Tea Tree', '10ml'),
+
+    // ─── DR C TUNA — TRATAMIENTOS ESPECÍFICOS ─
+    drtuna('DR C TUNA Absolute Super Elixir', '1000991', 329000, 'Tratamientos', '25ml'),
+    drtuna('DR C TUNA Massage Paprika & Chili Balsam', '1000305', 63900, 'Masaje', '150ml'),
+    drtuna('DR C TUNA Massage Pferde Horse Chestnut Balsam', '1000304', 63900, 'Masaje', '150ml'),
+
+    // ─── DR C TUNA — CABELLO ─────────────────
+    drtuna('DR C TUNA Reviving Hair Oil', '1000311', 133000, 'Cabello Reviving', '30ml'),
+    drtuna('DR C TUNA Reviving Shampoo', '1000309', 91500, 'Cabello Reviving', '225ml'),
+    drtuna('DR C TUNA Reviving Hair Mask', '1000310', 106500, 'Cabello Reviving', '200ml'),
+    drtuna('DR C TUNA Intensive Repair Shampoo', '1000885', 101200, 'Cabello Intensive', '225ml'),
+    drtuna('DR C TUNA Intensive Repair Conditioner', '1000886', 101200, 'Cabello Intensive', '200ml'),
+    drtuna('DR C TUNA Intensive Repair Hair Mask', '1000887', 101200, 'Cabello Intensive', '125ml'),
+
+    // ─── SUPLEMENTOS ──────────────────────────
+    { id:'1001862', name:'Nutriplus Energy Piña-Limón', ref:'1001862', price:186259, margin:30, cost:Math.round(186259*0.70), category:'Suplementos', presentation:'210g', stock:2, sold:0, active:true },
+    { id:'1001898', name:'Nutriplus Energy Mango-Limón', ref:'1001898', price:186400, margin:30, cost:Math.round(186400*0.70), category:'Suplementos', presentation:'240g', stock:2, sold:0, active:true },
+    { id:'1001319', name:'Aloe Glow Sabor Mango', ref:'1001319', price:130449, margin:30, cost:Math.round(130449*0.70), category:'Suplementos', presentation:'450ml', stock:2, sold:0, active:true },
+    { id:'9700003', name:'Café Instantáneo Mezcla Achicoria', ref:'9700003', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'100g', stock:2, sold:0, active:true },
+    { id:'9700004', name:'Café Instantáneo Mezcla Fibra', ref:'9700004', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'100g', stock:2, sold:0, active:true },
+    { id:'9700005', name:'Café Instantáneo Mezcla Premium', ref:'9700005', price:117100, margin:30, cost:Math.round(117100*0.70), category:'Suplementos', presentation:'100g', stock:2, sold:0, active:true },
+    { id:'1000957', name:'Serenity Té Durazno', ref:'1000957', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
+    { id:'1000958', name:'Serenity Té Limón', ref:'1000958', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
+    { id:'1000959', name:'Serenity Té Frambuesa', ref:'1000959', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
+    { id:'1000960', name:'Serenity Té Negro', ref:'1000960', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
+    { id:'9000689', name:'Nutriplus Lily Shaker', ref:'9000689', price:63400, margin:30, cost:Math.round(63400*0.70), category:'Suplementos', presentation:'400ml', stock:2, sold:0, active:true },
+  ];
+}
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+function login(user) {
+  currentUser = user;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('user-badge').textContent = user;
+  updateDateTime();
+  setInterval(updateDateTime, 30000);
+  if (!useFirebase) {
+    const state = localGet();
+    products = state.products;
+    sales = state.sales;
+  }
+  renderAll();
+}
+
+function logout() {
+  currentUser = null;
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function updateDateTime() {
+  const now = new Date();
+  const opts = { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' };
+  document.getElementById('current-date').textContent = now.toLocaleDateString('es-CO', opts).replace(',',' ·');
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  renderAll();
+}
+
+function renderAll() {
+  renderKPIs();
+  renderVentasTable();
+  renderInventarioTable();
+  renderHistorial();
+  renderResumen();
+  renderAdminTable();
+}
+
+// ═══════════════════════════════════════════
+// FORMATTING
+// ═══════════════════════════════════════════
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('es-CO');
+}
+
+function catClass(cat) {
+  if (cat === 'Farmasi Fragancias') return 'cat-farmasi-fra';
+  if (cat === 'Farmasi Cuidado Personal') return 'cat-farmasi-per';
+  if (cat.startsWith('DR C TUNA')) return 'cat-drtuna';
+  return 'cat-farmasi';
+}
+
+function catLabel(cat) {
+  if (cat === 'Farmasi Maquillaje') return 'Maquillaje';
+  if (cat === 'Farmasi Fragancias') return 'Fragancias';
+  if (cat === 'Farmasi Cuidado Personal') return 'Cuidado Pers.';
+  if (cat === 'DR C TUNA') return 'DR C TUNA';
+  if (cat === 'Suplementos') return 'Suplementos';
+  return cat;
+}
+
+function stockBadge(stock) {
+  const cls = stock === 0 ? 'stock-out' : stock <= 1 ? 'stock-low' : 'stock-ok';
+  return `<span class="stock-badge ${cls}">${stock}</span>`;
+}
+
+// ═══════════════════════════════════════════
+// KPIs
+// ═══════════════════════════════════════════
+function renderKPIs() {
+  const totalVentas = sales.reduce((a,s) => a + s.total, 0);
+  const totalCosto = sales.reduce((a,s) => a + s.cost * s.qty, 0);
+  const totalMargen = totalVentas - totalCosto;
+  const margenPct = totalVentas > 0 ? (totalMargen / totalVentas * 100).toFixed(1) : '0';
+  const totalUnidades = sales.reduce((a,s) => a + s.qty, 0);
+  const stockRestante = state.products.reduce((a,p) => a + p.stock, 0);
+
+  const html = `
+    <div class="kpi"><div class="kpi-label">Ventas Totales</div><div class="kpi-value">${fmt(totalVentas)}</div><div class="kpi-sub">${totalUnidades} unidades</div></div>
+    <div class="kpi"><div class="kpi-label">Margen Bruto</div><div class="kpi-value green">${fmt(totalMargen)}</div><div class="kpi-sub">${margenPct}% margen</div></div>
+    <div class="kpi"><div class="kpi-label">Transacciones</div><div class="kpi-value teal">${sales.length}</div><div class="kpi-sub">ventas registradas</div></div>
+    <div class="kpi"><div class="kpi-label">Stock Disponible</div><div class="kpi-value blue">${stockRestante}</div><div class="kpi-sub">unidades en total</div></div>
+  `;
+  document.getElementById('kpi-grid').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════
+// VENTAS TABLE
+// ═══════════════════════════════════════════
+function filterProducts(searchId, catId) {
+  const search = (document.getElementById(searchId)?.value || '').toLowerCase();
+  const cat = document.getElementById(catId)?.value || '';
+  return products.filter(p => {
+    if (!p.active) return false;
+    if (cat && p.category !== cat) return false;
+    if (search && !p.name.toLowerCase().includes(search) && !(p.ref||'').includes(search)) return false;
+    return true;
+  });
+}
+
+function renderVentasTable() {
+  const prods = filterProducts('search-ventas','filter-cat-ventas'); // uses module products
+  const tbody = document.getElementById('ventas-tbody');
+  if (!prods.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">Sin productos</div></td></tr>'; return; }
+
+  tbody.innerHTML = prods.map(p => {
+    const margen = p.price - p.cost;
+    const margenPct = (margen / p.price * 100).toFixed(0);
+    const disabled = p.stock === 0 ? 'disabled' : '';
+    return `<tr>
+      <td>
+        <div class="product-name">${p.name}</div>
+        ${p.presentation ? `<div class="product-ref">${p.presentation}</div>` : ''}
+      </td>
+      <td><span class="cat-pill ${catClass(p.category)}">${catLabel(p.category)}</span></td>
+      <td class="price-cell">${fmt(p.price)}</td>
+      <td class="cost-cell">${fmt(p.cost)}</td>
+      <td class="price-cell" style="color:var(--green)">${fmt(margen)} <span style="font-size:10px;color:var(--muted)">(${margenPct}%)</span></td>
+      <td>${stockBadge(p.stock)}</td>
+      <td><button class="btn btn-sell" onclick="openSell('${p.id}')" ${disabled}>Vender</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// INVENTARIO TABLE
+// ═══════════════════════════════════════════
+function renderInventarioTable() {
+  const prods = filterProducts('search-inv','filter-cat-inv');
+  const tbody = document.getElementById('inv-tbody');
+  if (!prods.length) { tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">Sin productos</div></td></tr>'; return; }
+
+  tbody.innerHTML = prods.map(p => {
+    const margenPct = ((p.price - p.cost) / p.price * 100).toFixed(0);
+    return `<tr>
+      <td class="product-name">${p.name}</td>
+      <td class="product-ref">${p.ref || '—'}</td>
+      <td><span class="cat-pill ${catClass(p.category)}">${catLabel(p.category)}</span></td>
+      <td class="price-cell">${fmt(p.price)}</td>
+      <td class="cost-cell">${fmt(p.cost)}</td>
+      <td style="color:var(--green);font-family:'JetBrains Mono',monospace;font-size:12px">${margenPct}%</td>
+      <td>${stockBadge(p.stock)}</td>
+      <td style="color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:12px">${p.sold || 0}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-edit" onclick="openEdit('${p.id}')">Editar</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// HISTORIAL
+// ═══════════════════════════════════════════
+function renderHistorial() {
+  const state = getState();
+  const div = document.getElementById('historial-list');
+  if (!state.sales.length) {
+    div.innerHTML = '<div class="empty-state">Aún no hay ventas registradas</div>';
+    return;
+  }
+  const sorted = [...state.sales].reverse();
+  div.innerHTML = sorted.map(s => {
+    const margen = (s.price - s.cost) * s.qty;
+    const dt = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
+    const dtStr = dt.toLocaleDateString('es-CO', {day:'2-digit',month:'short'}) + ' ' + dt.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="sale-row">
+      <div>
+        <div class="sale-product">${s.productName}</div>
+        <div class="sale-meta">${dtStr} · ${s.user} · Qty: ${s.qty}${s.notes ? ' · ' + s.notes : ''}</div>
+      </div>
+      <div class="sale-amount">${fmt(s.total)}</div>
+      <div class="sale-margin">+${fmt(margen)}</div>
+      <button class="btn btn-danger" onclick="deleteSale('${s.id}')" style="font-size:10px;padding:4px 8px;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// RESUMEN
+// ═══════════════════════════════════════════
+function renderResumen() {
+  // uses module-level sales array
+
+  const totalVentas = sales.reduce((a,s) => a + s.total, 0);
+  const totalCosto = sales.reduce((a,s) => a + s.cost * s.qty, 0);
+  const totalMargen = totalVentas - totalCosto;
+  const margenPct = totalVentas > 0 ? (totalMargen / totalVentas * 100).toFixed(1) : '0';
+  const totalUnidades = sales.reduce((a,s) => a + s.qty, 0);
+
+  document.getElementById('resumen-kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">Ingresos Totales</div><div class="kpi-value">${fmt(totalVentas)}</div></div>
+    <div class="kpi"><div class="kpi-label">Costo Total</div><div class="kpi-value" style="color:var(--muted)">${fmt(totalCosto)}</div></div>
+    <div class="kpi"><div class="kpi-label">Margen Bruto</div><div class="kpi-value green">${fmt(totalMargen)}</div><div class="kpi-sub">${margenPct}%</div></div>
+    <div class="kpi"><div class="kpi-label">Unidades</div><div class="kpi-value teal">${totalUnidades}</div></div>
+  `;
+
+  // Por usuario
+  const byUser = {};
+  sales.forEach(s => {
+    if (!byUser[s.user]) byUser[s.user] = { ventas:0, ingresos:0, margen:0 };
+    byUser[s.user].ventas += s.qty;
+    byUser[s.user].ingresos += s.total;
+    byUser[s.user].margen += (s.price - s.cost) * s.qty;
+  });
+  document.getElementById('resumen-usuarios').innerHTML = Object.entries(byUser).map(([u,d]) =>
+    `<tr><td>${u}</td><td style="font-family:'JetBrains Mono',monospace">${d.ventas}</td><td class="price-cell">${fmt(d.ingresos)}</td><td style="color:var(--green);font-family:'JetBrains Mono',monospace">${fmt(d.margen)}</td></tr>`
+  ).join('') || '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:12px">Sin datos</td></tr>';
+
+  // Por categoría
+  const byCat = {};
+  sales.forEach(s => {
+    if (!byCat[s.category]) byCat[s.category] = { units:0, ingresos:0, costo:0, margen:0 };
+    byCat[s.category].units += s.qty;
+    byCat[s.category].ingresos += s.total;
+    byCat[s.category].costo += s.cost * s.qty;
+    byCat[s.category].margen += (s.price - s.cost) * s.qty;
+  });
+  document.getElementById('resumen-categorias').innerHTML = Object.entries(byCat)
+    .sort((a,b) => b[1].ingresos - a[1].ingresos)
+    .map(([c,d]) =>
+      `<tr><td><span class="cat-pill ${catClass(c)}">${catLabel(c)}</span></td><td style="font-family:'JetBrains Mono',monospace">${d.units}</td><td class="price-cell">${fmt(d.ingresos)}</td><td class="cost-cell">${fmt(d.costo)}</td><td style="color:var(--green);font-family:'JetBrains Mono',monospace">${fmt(d.margen)}</td></tr>`
+    ).join('') || '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:12px">Sin datos</td></tr>';
+
+  // Top productos
+  const byProd = {};
+  sales.forEach(s => {
+    if (!byProd[s.productId]) byProd[s.productId] = { name:s.productName, units:0, ingresos:0, margen:0 };
+    byProd[s.productId].units += s.qty;
+    byProd[s.productId].ingresos += s.total;
+    byProd[s.productId].margen += (s.price - s.cost) * s.qty;
+  });
+  document.getElementById('resumen-top').innerHTML = Object.values(byProd)
+    .sort((a,b) => b.ingresos - a.ingresos).slice(0,10)
+    .map(d =>
+      `<tr><td class="product-name">${d.name}</td><td style="font-family:'JetBrains Mono',monospace">${d.units}</td><td class="price-cell">${fmt(d.ingresos)}</td><td style="color:var(--green);font-family:'JetBrains Mono',monospace">${fmt(d.margen)}</td></tr>`
+    ).join('') || '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:12px">Sin datos</td></tr>';
+}
+
+// ═══════════════════════════════════════════
+// ADMIN TABLE
+// ═══════════════════════════════════════════
+function renderAdminTable() {
+  const state = getState();
+  const search = (document.getElementById('search-admin')?.value || '').toLowerCase();
+  const prods = state.products.filter(p => !search || p.name.toLowerCase().includes(search) || (p.ref||'').includes(search));
+  const tbody = document.getElementById('admin-tbody');
+
+  tbody.innerHTML = prods.map(p => {
+    const margenPct = ((p.price - p.cost) / p.price * 100).toFixed(0);
+    return `<tr>
+      <td class="product-name">${p.name} ${!p.active ? '<span style="color:var(--red);font-size:10px">(inactivo)</span>' : ''}</td>
+      <td class="product-ref">${p.ref||'—'}</td>
+      <td class="price-cell">${fmt(p.price)}</td>
+      <td class="cost-cell">${fmt(p.cost)}</td>
+      <td style="color:var(--green);font-size:12px;font-family:'JetBrains Mono',monospace">${margenPct}%</td>
+      <td>${stockBadge(p.stock)}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-edit" onclick="openEdit('${p.id}')">Editar</button>
+        <button class="btn btn-danger" onclick="toggleActive('${p.id}')">${p.active ? 'Ocultar' : 'Activar'}</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+// SELL MODAL
+// ═══════════════════════════════════════════
+function openSell(id) {
+  const state = getState();
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  currentSellId = id;
+  sellQty = 1;
+  document.getElementById('sell-qty').textContent = 1;
+  document.getElementById('sell-price').value = p.price;
+  document.getElementById('sell-notes').value = '';
+  document.getElementById('sell-product-info').innerHTML = `
+    <div class="info-row"><strong>Producto:</strong> ${p.name}</div>
+    <div class="info-row"><strong>Ref:</strong> ${p.ref||'—'}</div>
+    <div class="info-row"><strong>Stock:</strong> ${p.stock} disponibles</div>
+    <div class="info-row"><strong>Precio base:</strong> ${fmt(p.price)}</div>
+    <div class="info-row"><strong>Costo:</strong> ${fmt(p.cost)}</div>
+  `;
+  updateSellPreview();
+  document.getElementById('modal-sell').classList.remove('hidden');
+}
+
+function changeQty(delta) {
+  const state = getState();
+  const p = state.products.find(x => x.id === currentSellId);
+  if (!p) return;
+  sellQty = Math.max(1, Math.min(p.stock, sellQty + delta));
+  document.getElementById('sell-qty').textContent = sellQty;
+  updateSellPreview();
+}
+
+function updateSellPreview() {
+  const state = getState();
+  const p = state.products.find(x => x.id === currentSellId);
+  if (!p) return;
+  const price = parseFloat(document.getElementById('sell-price').value) || p.price;
+  const margen = (price - p.cost) * sellQty;
+  const total = price * sellQty;
+  const margenPct = ((price - p.cost) / price * 100).toFixed(1);
+  document.getElementById('sell-preview').innerHTML =
+    `Total: ${fmt(total)} | Margen: ${fmt(margen)} (${margenPct}%) | Qty: ${sellQty}`;
+}
+
+document.getElementById('sell-price').addEventListener('input', updateSellPreview);
+
+async function confirmSale() {
+  const p = products.find(x => x.id === currentSellId);
+  if (!p || p.stock < sellQty) { showToast('Stock insuficiente', true); return; }
+
+  const price = parseFloat(document.getElementById('sell-price').value) || p.price;
+  const notes = document.getElementById('sell-notes').value;
+
+  const saleData = {
+    productId: p.id, productName: p.name, category: p.category,
+    price, cost: p.cost, qty: sellQty, total: price * sellQty,
+    user: currentUser, notes,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    if (useFirebase) {
+      await Promise.all([
+        db.collection('sales').add(saleData),
+        db.collection('products').doc(p.id).update({ stock: p.stock-sellQty, sold: (p.sold||0)+sellQty })
+      ]);
+    } else {
+      const state = localGet();
+      const lp = state.products.find(x=>x.id===p.id);
+      if (lp) { lp.stock-=sellQty; lp.sold=(lp.sold||0)+sellQty; }
+      state.sales.unshift({...saleData, id: Date.now().toString()});
+      localSave(state);
+      products=state.products; sales=state.sales; renderAll();
+    }
+    closeModal('modal-sell');
+    showToast(`✓ Venta registrada · ${fmt(price*sellQty)}`);
+  } catch(e) { showToast('Error: '+e.message, true); }
+}
+
+// ═══════════════════════════════════════════
+// EDIT MODAL
+// ═══════════════════════════════════════════
+function openEdit(id) {
+  const state = getState();
+  const p = state.products.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-name').value = p.name;
+  document.getElementById('edit-price').value = p.price;
+  document.getElementById('edit-margin').value = p.margin;
+  document.getElementById('edit-stock').value = p.stock;
+  document.getElementById('modal-edit').classList.remove('hidden');
+}
+
+async function saveEdit() {
+  const id = document.getElementById('edit-id').value;
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  const name = document.getElementById('edit-name').value;
+  const price = parseFloat(document.getElementById('edit-price').value)||p.price;
+  const margin = parseFloat(document.getElementById('edit-margin').value)||p.margin;
+  const stock = parseInt(document.getElementById('edit-stock').value)||0;
+  const cost = Math.round(price*(1-margin/100));
+  try {
+    if (useFirebase) {
+      await db.collection('products').doc(id).update({name,price,margin,cost,stock});
+    } else {
+      const state = localGet();
+      const lp = state.products.find(x=>x.id===id);
+      if (lp) Object.assign(lp,{name,price,margin,cost,stock});
+      localSave(state);
+      products=state.products; renderAll();
+    }
+    closeModal('modal-edit');
+    showToast('✓ Producto actualizado');
+  } catch(e) { showToast('Error: '+e.message,true); }
+}
+
+// ═══════════════════════════════════════════
+// ADD PRODUCT
+// ═══════════════════════════════════════════
+function autoMargin() {
+  const cat = document.getElementById('new-cat').value;
+  const margin = cat === 'DR C TUNA' ? 50 : 30;
+  document.getElementById('new-margin').value = margin;
+  manualMargin();
+}
+
+function manualMargin() {
+  const price = parseFloat(document.getElementById('new-price').value) || 0;
+  const margin = parseFloat(document.getElementById('new-margin').value) || 30;
+  const cost = Math.round(price * (1 - margin / 100));
+  const margenBruto = price - cost;
+  document.getElementById('margin-preview').innerHTML =
+    price ? `Costo estimado: ${fmt(cost)} | Margen bruto por unidad: ${fmt(margenBruto)} (${margin}%)` : 'Ingresa el precio para ver el margen';
+}
+
+async function addProduct() {
+  const name = document.getElementById('new-name').value.trim();
+  const ref = document.getElementById('new-ref').value.trim();
+  const cat = document.getElementById('new-cat').value;
+  const price = parseFloat(document.getElementById('new-price').value);
+  const margin = parseFloat(document.getElementById('new-margin').value)||30;
+  const stock = parseInt(document.getElementById('new-stock').value)||2;
+  const presentation = document.getElementById('new-presentation').value.trim();
+  if (!name||!price) { showToast('Nombre y precio son obligatorios',true); return; }
+  const id = ref||'CUSTOM-'+Date.now().toString(36);
+  const prod = {id,name,ref,price,margin,cost:Math.round(price*(1-margin/100)),category:cat,presentation,stock,sold:0,active:true};
+  try {
+    if (useFirebase) {
+      await db.collection('products').doc(id).set(prod);
+    } else {
+      const state = localGet();
+      state.products.push(prod);
+      localSave(state);
+      products=state.products; renderAll();
+    }
+    ['new-name','new-ref','new-price','new-presentation'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('new-stock').value=2;
+    document.getElementById('new-margin').value=30;
+    document.getElementById('margin-preview').innerHTML='Ingresa precio para ver el margen';
+    showToast(`✓ Producto "${name}" agregado`);
+  } catch(e) { showToast('Error: '+e.message,true); }
+}
+
+// ═══════════════════════════════════════════
+// TOGGLE ACTIVE
+// ═══════════════════════════════════════════
+async function toggleActive(id) {
+  const p = products.find(x=>x.id===id);
+  if (!p) return;
+  const newVal = !p.active;
+  try {
+    if (useFirebase) {
+      await db.collection('products').doc(id).update({active:newVal});
+    } else {
+      const state = localGet();
+      const lp = state.products.find(x=>x.id===id);
+      if (lp) lp.active=newVal;
+      localSave(state);
+      products=state.products; renderAll();
+    }
+    showToast(newVal?'✓ Producto activado':'Producto ocultado');
+  } catch(e) { showToast('Error: '+e.message,true); }
+}
+
+// ═══════════════════════════════════════════
+// DELETE SALE
+// ═══════════════════════════════════════════
+async function deleteSale(saleId) {
+  if (!confirm('¿Eliminar esta venta? Se restaura el stock.')) return;
+  const s = sales.find(x=>x.id===saleId);
+  if (!s) return;
+  try {
+    if (useFirebase) {
+      const p = products.find(x=>x.id===s.productId);
+      await Promise.all([
+        db.collection('sales').doc(saleId).delete(),
+        p ? db.collection('products').doc(s.productId).update({stock:(p.stock||0)+s.qty, sold:Math.max(0,(p.sold||0)-s.qty)}) : Promise.resolve()
+      ]);
+    } else {
+      const state = localGet();
+      const lp = state.products.find(x=>x.id===s.productId);
+      if (lp) { lp.stock+=s.qty; lp.sold=Math.max(0,(lp.sold||0)-s.qty); }
+      state.sales=state.sales.filter(x=>x.id!==saleId);
+      localSave(state);
+      products=state.products; sales=state.sales; renderAll();
+    }
+    showToast('Venta eliminada y stock restaurado');
+  } catch(e) { showToast('Error: '+e.message,true); }
+}
+
+// ═══════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════
+function exportCSV() {
+  const rows = [['Fecha','Hora','Usuario','Producto','Referencia','Categoría','Qty','Precio Unitario','Costo','Total','Margen','Notas']];
+  sales.forEach(s => {
+    const dt = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
+    rows.push([
+      dt.toLocaleDateString('es-CO'),
+      dt.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),
+      s.user, s.productName, '', s.category, s.qty,
+      s.price, s.cost, s.total, (s.price-s.cost)*s.qty, s.notes||''
+    ]);
+  });
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `ventas-evento-${new Date().toLocaleDateString('es-CO').replace(/\//g,'-')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
+});
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => t.className = '', 3000);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// CONFIG HARDCODED (Firebase evento-my)
+// ═══════════════════════════════════════════
+const FIREBASE_CFG = {
+  apiKey: "AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s",
+  authDomain: "evento-my.firebaseapp.com",
+  projectId: "evento-my",
+  storageBucket: "evento-my.firebasestorage.app",
+  messagingSenderId: "954469635809",
+  appId: "1:954469635809:web:be3f457b16c57e7468c9a0"
+};
+
+async function init() {
+  // Always use hardcoded config — no setup screen needed
+  document.getElementById('setup-overlay').classList.add('hidden');
+  
+  if (!window.__firebaseReady) {
+    await new Promise(r => window.addEventListener('firebase-ready', r, {once:true}));
+  }
+  
+  try {
+    const app = window.__fb.initializeApp(FIREBASE_CFG, 'evento-my-app');
+    db = window.__fb.getFirestore(app);
+    useFirebase = true;
+    await startListeners();
+    document.getElementById('login-screen').style.display = 'flex';
+    const sub = document.getElementById('login-sub-text');
+    if (sub) sub.innerHTML = '<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 1.5s infinite"></span>En línea · Tiempo real';
+  } catch(e) {
+    console.error('Firebase error:', e);
+    useFirebase = false;
+    document.getElementById('login-screen').style.display = 'flex';
+    showToast('Modo sin conexión activado', true);
+  }
+  updateDateTime();
+}
+
+init();
+</script>
+</body>
+</html>
