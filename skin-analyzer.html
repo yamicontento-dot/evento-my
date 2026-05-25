@@ -506,16 +506,19 @@ main {
     <div class="form-title">Casi listo ✨</div>
     <div class="form-sub">Ingresa tus datos para recibir tu diagnóstico personalizado</div>
     <div class="field-group">
-      <label class="field-label">Nombre completo</label>
+      <label class="field-label">Nombre completo *</label>
       <input class="field-input" id="client-name" placeholder="Tu nombre">
     </div>
     <div class="field-group">
-      <label class="field-label">Correo electrónico</label>
-      <input class="field-input" id="client-email" type="email" placeholder="tu@correo.com">
+      <label class="field-label">WhatsApp * <span style="font-size:10px;color:var(--green);font-weight:600;text-transform:none">Obligatorio</span></label>
+      <div style="display:flex;gap:6px">
+        <span style="padding:11px 10px;background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.3);border-radius:10px;font-size:14px;flex-shrink:0">📱</span>
+        <input class="field-input" id="client-phone" placeholder="300 000 0000" type="tel" inputmode="numeric" style="border-color:rgba(37,211,102,.4)">
+      </div>
     </div>
     <div class="field-group">
-      <label class="field-label">WhatsApp (opcional)</label>
-      <input class="field-input" id="client-phone" placeholder="300 000 0000">
+      <label class="field-label">Correo electrónico <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">(opcional)</span></label>
+      <input class="field-input" id="client-email" type="email" placeholder="tu@correo.com">
     </div>
     <div class="nav-btns">
       <button class="btn-back" onclick="goToQuiz()">← Volver</button>
@@ -877,11 +880,19 @@ function getTips() {
 
 function generateResults() {
   const name = document.getElementById('client-name').value.trim();
+  const phone = document.getElementById('client-phone').value.trim();
   if (!name) { showToast('Ingresa tu nombre para continuar'); return; }
+  if (!phone) { 
+    showToast('📱 El WhatsApp es obligatorio');
+    document.getElementById('client-phone').focus();
+    document.getElementById('client-phone').style.borderColor = 'var(--orange)';
+    setTimeout(() => document.getElementById('client-phone').style.borderColor = '', 2000);
+    return; 
+  }
   clientData = {
     name,
     email: document.getElementById('client-email').value.trim(),
-    phone: document.getElementById('client-phone').value.trim()
+    phone
   };
 
   document.getElementById('client-section').style.display = 'none';
@@ -963,16 +974,21 @@ function renderResults() {
 
     <!-- SHARE -->
     <div class="share-card">
-      <div class="share-title">Recibe tu diagnóstico por correo</div>
-      <div class="share-sub">Te enviaremos tu rutina completa para que siempre la tengas a mano</div>
+      <div class="share-title">📲 Compartir tu diagnóstico</div>
+      <div class="share-sub">Envía tu rutina personalizada directo a WhatsApp para tenerla siempre a mano</div>
+      <button class="btn-whatsapp" onclick="shareWhatsApp()" style="margin-bottom:12px;font-size:15px;padding:14px">
+        💬 Enviar por WhatsApp a ${clientData.phone || 'mi número'}
+      </button>
+      <div style="display:flex;align-items:center;gap:8px;margin:4px 0 12px">
+        <div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>
+        <span style="font-size:11px;color:var(--muted)">o por correo</span>
+        <div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>
+      </div>
       <div class="share-field">
         <input class="share-input" id="share-email" type="email" placeholder="correo@ejemplo.com"
           value="${clientData.email || ''}">
         <button class="btn-share" onclick="sendEmail()">Enviar →</button>
       </div>
-      <button class="btn-whatsapp" onclick="shareWhatsApp()">
-        <span>💬</span> Compartir por WhatsApp
-      </button>
     </div>
 
     <!-- CONTACT -->
@@ -1007,8 +1023,38 @@ function sendEmail() {
 
 function shareWhatsApp() {
   const rec = getRecommendation();
-  const msg = `✨ *Mi diagnóstico de piel DR C TUNA*\n\n*Línea recomendada:* ${rec.line}\n${rec.tagline}\n\n*Mi rutina:*\n${rec.skincare.map(p => `${p.step}. ${p.name}`).join('\n')}\n\n_Diagnóstico por Yamile Contento & Milena Arcilla_\n📲 310 805 1223 | 321 200 2456`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  const skinTypeLabel = {
+    oily: 'Piel grasa', dry: 'Piel seca', combination: 'Piel mixta',
+    normal: 'Piel normal', sensitive: 'Piel sensible'
+  }[answers.skin_type] || 'Tu tipo de piel';
+  const msg = `✨ *Diagnóstico de piel DR C TUNA*
+  
+Hola ${clientData.name || ''}! 🌸
+
+*Tipo de piel:* ${skinTypeLabel}
+*Línea recomendada:* ${rec.line}
+_${rec.tagline}_
+
+*Tu rutina paso a paso:*
+${rec.skincare.map(p => `${p.step}. *${p.stepLabel}:* ${p.name}`).join('
+')}
+
+*Maquillaje Farmasi sugerido:*
+Para tu tipo de piel te recomendamos bases y productos de larga duración adaptados a ti 💄
+
+_Diagnóstico personalizado por:_
+📲 Yamile Contento: 310 805 1223
+📲 Milena Arcilla: 321 200 2456
+
+¡Escríbenos para conseguir tus productos! 🛍`;
+
+  // Send to client's own number if available
+  const phone = clientData.phone ? clientData.phone.replace(/\D/g,'') : '';
+  const waNumber = phone.length >= 10 ? '57' + phone.slice(-10) : '';
+  const waUrl = waNumber
+    ? \`https://wa.me/\${waNumber}?text=\${encodeURIComponent(msg)}\`
+    : \`https://wa.me/?text=\${encodeURIComponent(msg)}\`;
+  window.open(waUrl, '_blank');
 }
 
 function restartQuiz() {
