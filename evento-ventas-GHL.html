@@ -970,46 +970,50 @@ async function initFirebase() {
 }
 
 async function startListeners() {
-  // Test Firebase connectivity
-  let testDocs = null;
   try {
-    testDocs = await fbList('products');
-  } catch(e) { testDocs = null; }
+    // Check if Firestore has products
+    const testDocs = await fbList('products');
+    
+    if (testDocs === null) {
+      console.warn('Firebase not reachable — staying in local mode');
+      return;
+    }
 
-  if (testDocs === null) {
-    console.warn('Firebase not reachable — local mode');
-    useFirebase = false;
-    const state = localGet();
-    products = state.products;
-    sales = state.sales;
-    renderAll();
-    return;
+    // Seed if empty
+    if (testDocs.length === 0) {
+      showToast('Cargando catálogo en la nube...');
+      const prods = getInitialProducts();
+      for (const p of prods) {
+        await db.collection('products').doc(p.id).set(p);
+      }
+      showToast('✓ Catálogo cargado en Firebase');
+    }
+
+    // Start polling — update UI when data arrives
+    db.collection('products').onSnapshot(snap => {
+      if (snap && snap.docs && snap.docs.length > 0) {
+        products = snap.docs;
+        // Save to local as backup
+        const state = localGet();
+        state.products = products;
+        localSave(state);
+        if (currentUser) { flashLive(); renderAll(); }
+      }
+    });
+
+    db.collection('sales').orderBy('timestamp', 'desc').onSnapshot(snap => {
+      if (snap && snap.docs) {
+        sales = snap.docs;
+        const state = localGet();
+        state.sales = sales;
+        localSave(state);
+        if (currentUser) { flashLive(); renderAll(); }
+      }
+    });
+
+  } catch(e) {
+    console.warn('startListeners error:', e.message);
   }
-
-  // Seed if empty
-  if (testDocs.length === 0) {
-    const prods = getInitialProducts();
-    showToast('Cargando catálogo (' + prods.length + ' productos)...');
-    for (const p of prods) {
-      await db.collection('products').doc(p.id).set(p);
-    }
-  }
-
-  // Products polling
-  db.collection('products').onSnapshot(snap => {
-    if (snap && snap.docs && snap.docs.length > 0) {
-      products = snap.docs;
-      if (currentUser) renderAll();
-    }
-  });
-
-  // Sales polling
-  db.collection('sales').orderBy('timestamp', 'desc').onSnapshot(snap => {
-    if (snap && snap.docs) {
-      sales = snap.docs;
-      if (currentUser) renderAll();
-    }
-  });
 }
 
 function flashLive() {
@@ -1023,148 +1027,121 @@ function flashLive() {
 // INITIAL PRODUCTS (catálogo completo)
 // ═══════════════════════════════════════════
 function getInitialProducts() {
-  const farmasi = (name, ref, price, subcategory, presentation='') => ({
-    id: ref || name.replace(/\s/g,'_') + '_' + Math.random().toString(36).slice(2,6),
-    name, ref, price, margin: 30,
-    cost: Math.round(price * 0.70),
-    category: 'Farmasi ' + subcategory,
-    presentation, stock: 2, sold: 0, active: true
-  });
-
-  const drtuna = (name, ref, price, subcategory='', presentation='') => ({
-    id: ref || name.replace(/\s/g,'_') + '_' + Math.random().toString(36).slice(2,6),
-    name, ref, price, margin: 50,
+  const D = (name, ref, price, sub='', pres='') => ({
+    id: ref, name, ref, price, margin: 50,
     cost: Math.round(price * 0.50),
-    category: 'DR C TUNA',
-    subcategory, presentation, stock: 2, sold: 0, active: true
+    category: 'DR C TUNA', subcategory: sub,
+    presentation: pres, stock: 2, sold: 0, active: true
+  });
+  const F = (name, ref, price, sub, pres='') => ({
+    id: ref, name, ref, price, margin: 30,
+    cost: Math.round(price * 0.70),
+    category: 'Farmasi ' + sub,
+    presentation: pres, stock: 2, sold: 0, active: true
+  });
+  const S = (name, ref, price, pres='') => ({
+    id: ref, name, ref, price, margin: 30,
+    cost: Math.round(price * 0.70),
+    category: 'Suplementos',
+    presentation: pres, stock: 2, sold: 0, active: true
   });
 
   return [
-    // ─── FARMASI MAQUILLAJE ───────────────────
-    // LABIOS
-    farmasi('Matte Liquid Lipstick', '1001409-19', 65800, 'Maquillaje', '4ml · 11 tonos'),
-    farmasi('Creamy Lipstick', '1001387-402', 42800, 'Maquillaje', '4g · 15 tonos'),
-    farmasi('Tinted Lip Plumper', '1001497-521', 76900, 'Maquillaje', '8ml · 5 tonos'),
-    farmasi('Ultimate Shine Lip Gloss', '1001403-408', 71500, 'Maquillaje', '8ml · 5 tonos'),
-    farmasi('Lip Liner', '1001461-464', 32900, 'Maquillaje', '0.35g · 3 tonos'),
-    farmasi('BB Glaze Lipstick', '1001423-428', 54900, 'Maquillaje', '4g · 6 tonos'),
-    // OJOS
-    farmasi('Mascara Voluminizadora (12ml)', '1301518', 85000, 'Maquillaje', '12ml'),
-    farmasi('Mascara Ligera (8ml)', '1301322', 42500, 'Maquillaje', '8ml'),
-    farmasi('Infinilash Mascara', '1001503', 98900, 'Maquillaje', '10ml'),
-    farmasi('Eye Pencil', '1001451-460', 41500, 'Maquillaje', '5 tonos'),
-    farmasi('Brow Setting Wax', '1000930', 101000, 'Maquillaje', '25g'),
-    farmasi('Eyebrow & Lash Capixyl Serum', '1301292', 119900, 'Maquillaje', '12ml'),
-    // ROSTRO
-    farmasi('VF X PRO Blur Primer', '1001516', 71300, 'Maquillaje', '25ml'),
-    farmasi('VF X PRO Illuminating Primer', '1001517', 71300, 'Maquillaje', '25ml'),
-    farmasi('VF X PRO Liquid Concealer', '1001375-380', 52700, 'Maquillaje', '5 tonos'),
-    farmasi('VF X PRO Camera Ready Foundation', '1001353-370', 107500, 'Maquillaje', '18 tonos'),
-    farmasi('CC Cream Color Control', '1001557-562', 61400, 'Maquillaje', '5 tonos'),
-    farmasi('BB Cream Beauty Balm', '1001551-555', 52700, 'Maquillaje', '5 tonos'),
-    farmasi('BB Powder', '1001346-351', 93300, 'Maquillaje', '12g · 6 tonos'),
-    farmasi('Contour Stick Bronceador', '9000891', 76900, 'Maquillaje', '4.5g'),
-    farmasi('Highlighter Stick', '9000892', 76900, 'Maquillaje', '4.5g'),
-    farmasi('Blush Stick', '9000887-890', 76900, 'Maquillaje', '4 tonos'),
-    farmasi('Powder Blusher', '1001435-436', 59300, 'Maquillaje', '2 tonos'),
-    farmasi('VF X PRO Time Locker Fixing Spray', '1001519', 41700, 'Maquillaje', '125ml'),
-    // ACCESORIOS
-    farmasi('Brocha para Delinear', '9000940', 35100, 'Maquillaje', 'unidad'),
-    farmasi('Brocha Plana para Definir', '9000941', 35100, 'Maquillaje', 'unidad'),
-    farmasi('Brocha para Difuminar', '9000939', 48300, 'Maquillaje', 'unidad'),
-    farmasi('Brocha para Sombra', '9000938', 35100, 'Maquillaje', 'unidad'),
-    farmasi('Brocha para Corrector', '9000937', 35100, 'Maquillaje', 'unidad'),
-    farmasi('Brocha Angular para Cejas', '9000936', 48300, 'Maquillaje', 'unidad'),
-    farmasi('Brocha para Base de Maquillaje', '9000934', 63600, 'Maquillaje', 'unidad'),
-    farmasi('Brocha Kabuki', '9000935', 63600, 'Maquillaje', 'unidad'),
-    farmasi('Esponja para Maquillaje', '9000942', 41700, 'Maquillaje', 'unidad'),
-    farmasi('Brocha Contouring', '9000933', 63600, 'Maquillaje', 'unidad'),
+    // ── DR C TUNA: LÍNEA CALENDULA ─────────────────────────────
+    D('DR C TUNA Calendula Limpiador',       'DRC-CAL-01', 67000,  'Calendula', '100ml · Pieles sensibles/irritadas'),
+    D('DR C TUNA Calendula Crema Facial',    'DRC-CAL-02', 85200,  'Calendula', '50ml'),
+    D('DR C TUNA Calendula Balsamo Crema',   'DRC-CAL-03', 112900, 'Calendula', '80ml'),
+    D('DR C TUNA Calendula Aceite',          'DRC-CAL-04', 160000, 'Calendula', '30ml'),
+    D('DR C TUNA Calendula Tonico Facial',   'DRC-CAL-05', 67000,  'Calendula', '125ml'),
+    D('DR C TUNA Set Calendula (4 piezas)',  'DRC-CAL-SET', 265680, 'Calendula', 'Limpiador+Tonico+Crema+Balsamo'),
 
-    // ─── FARMASI FRAGANCIAS ──────────────────
-    { id:'1107491', name:'Hera Eau de Parfum', ref:'1107491', price:138500, margin:30, cost:Math.round(138500*0.70), category:'Farmasi Fragancias', presentation:'65ml · Mujer', stock:2, sold:0, active:true },
-    { id:'1000490', name:'Her Passion Eau de Parfum', ref:'1000490', price:186300, margin:30, cost:Math.round(186300*0.70), category:'Farmasi Fragancias', presentation:'60ml · Mujer', stock:2, sold:0, active:true },
-    { id:'1107522', name:'Baoli Eau de Parfum', ref:'1107522', price:159900, margin:30, cost:Math.round(159900*0.70), category:'Farmasi Fragancias', presentation:'90ml · Hombre', stock:2, sold:0, active:true },
-    { id:'1000489', name:'His Power Eau de Parfum', ref:'1000489', price:186300, margin:30, cost:Math.round(186300*0.70), category:'Farmasi Fragancias', presentation:'100ml · Hombre', stock:2, sold:0, active:true },
+    // ── DR C TUNA: LÍNEA TEA TREE ──────────────────────────────
+    D('DR C TUNA Tea Tree Limpiador',        'DRC-TT-01', 67000,  'Tea Tree', '100ml · Pieles grasas/antibacterial'),
+    D('DR C TUNA Tea Tree Crema Facial',     'DRC-TT-02', 85200,  'Tea Tree', '50ml'),
+    D('DR C TUNA Tea Tree Balsamo Crema',    'DRC-TT-03', 112900, 'Tea Tree', '80ml'),
+    D('DR C TUNA Tea Tree Suero',            'DRC-TT-04', 93800,  'Tea Tree', '10ml'),
+    D('DR C TUNA Tea Tree Tonico',           'DRC-TT-05', 67000,  'Tea Tree', '125ml'),
+    D('DR C TUNA Set Tea Tree (5 piezas)',   'DRC-TT-SET', 340720, 'Tea Tree', 'Limpiador+Tonico+Suero+Crema+Balsamo'),
 
-    // ─── FARMASI CUIDADO PERSONAL ────────────
-    { id:'1700001', name:'Whitening Pasta Dental', ref:'1700001', price:64000, margin:30, cost:Math.round(64000*0.70), category:'Farmasi Cuidado Personal', presentation:'112g', stock:2, sold:0, active:true },
-    { id:'1000329', name:'Calendula Soap', ref:'1000329', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'125g', stock:2, sold:0, active:true },
-    { id:'1000330', name:'Tea Tree Soap', ref:'1000330', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'125g', stock:2, sold:0, active:true },
-    { id:'1000790', name:'Stay Fresh Deo Roll-On Aqua', ref:'1000790', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
-    { id:'1000789', name:'Stay Fresh Deo Roll-On Fresh', ref:'1000789', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
-    { id:'1000787', name:'Stay Fresh Deo Roll-On Floral', ref:'1000787', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
-    { id:'1000788', name:'Stay Fresh Deo Roll-On Green', ref:'1000788', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
-    { id:'1000786', name:'Stay Fresh Deo Roll-On Cotton', ref:'1000786', price:32000, margin:30, cost:Math.round(32000*0.70), category:'Farmasi Cuidado Personal', presentation:'50ml', stock:2, sold:0, active:true },
+    // ── DR C TUNA: LÍNEA AQUA ──────────────────────────────────
+    D('DR C TUNA Aqua Limpiador',            'DRC-AQ-01', 100000, 'Aqua', '100ml · Hidratación pieles deshidratadas'),
+    D('DR C TUNA Aqua Hidratante',           'DRC-AQ-02', 227000, 'Aqua', '50ml'),
+    D('DR C TUNA Aqua Contorno Ojos',        'DRC-AQ-03', 85200,  'Aqua', '20ml'),
+    D('DR C TUNA Aqua Suero/Gotas Hidra',    'DRC-AQ-04', 198000, 'Aqua', '30ml'),
+    D('DR C TUNA Set Aqua (4 piezas)',       'DRC-AQ-SET', 488160, 'Aqua', 'Limpiador+Contorno+Hidratante+Gotas/Suero'),
 
-    // ─── DR C TUNA — RESURFACE ───────────────
-    drtuna('DR C TUNA Resurface Refining Cleanser', '1000277', 173500, 'Resurface', '100ml'),
-    drtuna('DR C TUNA Resurface Hydrasooth Essence', '1000278', 198000, 'Resurface', '100ml'),
-    drtuna('DR C TUNA Resurface Advanced Eye Cream', '1000282', 173500, 'Resurface', '15ml'),
-    drtuna('DR C TUNA Resurface Essential Day Cream', '1000280', 346000, 'Resurface', '50ml'),
-    drtuna('DR C TUNA Resurface Retinol Reviving Serum', '1000279', 319500, 'Resurface', '30ml'),
-    drtuna('DR C TUNA Resurface Reset Night Cream', '1000281', 319500, 'Resurface', '50ml'),
+    // ── DR C TUNA: LÍNEA AGE REVERSIST ────────────────────────
+    D('DR C TUNA Age Reversist Limpiador Exfoliante', 'DRC-AR-01', 159500, 'Age Reversist', '80ml · Antiedad'),
+    D('DR C TUNA Age Reversist Crema Hidratante',     'DRC-AR-02', 202500, 'Age Reversist', '30ml'),
+    D('DR C TUNA Age Reversist Suero',                'DRC-AR-03', 319500, 'Age Reversist', '30ml'),
+    D('DR C TUNA Age Reversist Contorno Ojos',        'DRC-AR-04', 159900, 'Age Reversist', '15ml'),
+    D('DR C TUNA Age Reversist Crema Noche',          'DRC-AR-05', 293000, 'Age Reversist', '50ml'),
+    D('DR C TUNA Age Reversist Tonico',               'DRC-AR-06', 170500, 'Age Reversist', '100ml'),
+    D('DR C TUNA Age Reversist Crema Perfeccionadora','DRC-AR-07', 319500, 'Age Reversist', '0.3ml x30'),
+    D('DR C TUNA Set Age Reversist (6 piezas)',       'DRC-AR-SET', 907520,'Age Reversist', 'Limpiador+Hidratante+Suero+Contorno+CremaNoche+Perfeccionadora'),
 
-    // ─── DR C TUNA — AGE REVERSIST ───────────
-    drtuna('DR C TUNA Age Reversist Exfoliating Cleanser', '1000276', 159500, 'Age Reversist', '80ml'),
-    drtuna('DR C TUNA Age Reversist Beauty Essence Tonic', '1000270', 170500, 'Age Reversist', '100ml'),
-    drtuna('DR C TUNA Age Reversist Eye Cream', '1000273', 159900, 'Age Reversist', '15ml'),
-    drtuna('DR C TUNA Age Reversist Serum', '1000272', 319500, 'Age Reversist', '30ml'),
-    drtuna('DR C TUNA Age Reversist Rich Moisturizer', '1000271', 202500, 'Age Reversist', '30ml'),
-    drtuna('DR C TUNA Age Reversist All Night Perfecting Cream', '1000269', 293000, 'Age Reversist', '50ml'),
-    drtuna('DR C TUNA Age Reversist Instant Beauty Mask', '1000275', 319500, 'Age Reversist', '0.3ml x30 sachets'),
+    // ── DR C TUNA: LÍNEA LUMI RADIANCE ────────────────────────
+    D('DR C TUNA Lumi Radiance Limpiador',            'DRC-LR-01', 106500, 'Lumi Radiance', '100ml · Iluminar/manchas'),
+    D('DR C TUNA Lumi Radiance Crema Hidratante',     'DRC-LR-02', 187500, 'Lumi Radiance', '50ml'),
+    D('DR C TUNA Lumi Radiance Suero',                'DRC-LR-03', 198000, 'Lumi Radiance', '30ml'),
+    D('DR C TUNA Lumi Radiance Contorno Ojos',        'DRC-LR-04', 85200,  'Lumi Radiance', '20ml'),
+    D('DR C TUNA Lumi Radiance Tonico',               'DRC-LR-05', 120500, 'Lumi Radiance', '125ml'),
+    D('DR C TUNA Set Lumi Radiance (5 piezas)',       'DRC-LR-SET', 461760,'Lumi Radiance', 'Limpiador+Hidratante+Suero+Contorno'),
 
-    // ─── DR C TUNA — LUMI RADIANCE ───────────
-    drtuna('DR C TUNA Lumi Radiance Gel Cleanser', '1000300', 106500, 'Lumi Radiance', '100ml'),
-    drtuna('DR C TUNA Lumi Radiance Brightening Toner', '1000295', 120500, 'Lumi Radiance', '125ml'),
-    drtuna('DR C TUNA Lumi Radiance Eye Balm', '1000299', 85200, 'Lumi Radiance', '20ml'),
-    drtuna('DR C TUNA Lumi Radiance Brightening Serum', '1000298', 198000, 'Lumi Radiance', '30ml'),
-    drtuna('DR C TUNA Lumi Radiance Brightening Cream FPS22', '1000297', 187500, 'Lumi Radiance', '50ml'),
+    // ── DR C TUNA: LÍNEA RESURFACE ─────────────────────────────
+    D('DR C TUNA Resurface Limpiador',                'DRC-RS-01', 173500, 'Resurface', '100ml · Renueva textura'),
+    D('DR C TUNA Resurface Crema Día',                'DRC-RS-02', 319500, 'Resurface', '50ml'),
+    D('DR C TUNA Resurface Contorno Ojos',            'DRC-RS-03', 173500, 'Resurface', '15ml'),
+    D('DR C TUNA Resurface Suero Retinol',            'DRC-RS-04', 346000, 'Resurface', '30ml'),
+    D('DR C TUNA Resurface Tonico/Essence',           'DRC-RS-05', 198000, 'Resurface', '100ml'),
+    D('DR C TUNA Resurface Crema Noche',              'DRC-RS-06', 319500, 'Resurface', '50ml'),
+    D('DR C TUNA Set Resurface (4 piezas)',           'DRC-RS-SET', 810000,'Resurface', 'Limpiador+Suero+Contorno+CremaNoche'),
 
-    // ─── DR C TUNA — AQUA ────────────────────
-    drtuna('DR C TUNA Aqua Restoring Gel Cleanser', '1000265', 100000, 'Aqua', '100ml'),
-    drtuna('DR C TUNA Aqua Boosting Hydra Drops', '1000266', 198000, 'Aqua', '30ml'),
-    drtuna('DR C TUNA Aqua Revitalizing Eye Cream', '1000268', 85200, 'Aqua', '20ml'),
-    drtuna('DR C TUNA Aqua Hydrating Cream', '1000267', 227000, 'Aqua', '50ml'),
+    // ── DR C TUNA: PRODUCTOS ESPECIALES ───────────────────────
+    D('DR C TUNA Absolute Super Elixir',     'DRC-SE-01',  329000, 'Especiales', '25ml'),
+    D('DR C TUNA Jabón Calendula',           'DRC-JAB-01', 32000,  'Especiales', '125g'),
+    D('DR C TUNA Jabón Tea Tree',            'DRC-JAB-02', 32000,  'Especiales', '125g'),
+    D('DR C TUNA Balsamo Hidratante Manos',  'DRC-MAN-01', 21300,  'Especiales', 'Manos'),
+    D('DR C TUNA Crema Manos',               'DRC-MAN-02', 21300,  'Especiales', 'Manos'),
+    D('DR C TUNA Desodorante Mujer',         'DRC-DEO-01', 32000,  'Especiales', 'Roll-on'),
+    D('DR C TUNA Crema Dental',              'DRC-DEN-01', 64000,  'Especiales', '112g'),
+    D('DR C TUNA Exfoliante Flaunt It',      'DRC-EXF-01', 213000, 'Especiales', 'Cuerpo'),
+    D('DR C TUNA Gel Flaunt It',             'DRC-GEL-01', 159800, 'Especiales', 'Cuerpo'),
+    D('DR C TUNA Gel Paprika',               'DRC-GEL-02', 63900,  'Especiales', 'Masaje'),
+    D('DR C TUNA Gel Castaño de Indias',     'DRC-GEL-03', 63900,  'Especiales', 'Masaje'),
+    D('DR C TUNA Bloqueador Cuerpo SPF',     'DRC-BLQ-01', 136500, 'Especiales', 'Cuerpo'),
+    D('DR C TUNA Bloqueador Rostro SPF',     'DRC-BLQ-02', 91000,  'Especiales', 'Rostro'),
+    D('DR C TUNA Cera Peinar Hombre',        'DRC-CPH-01', 63900,  'Especiales', 'Cabello hombre'),
 
-    // ─── DR C TUNA — CALENDULA ───────────────
-    drtuna('DR C TUNA Calendula Face Wash', '1000283', 67000, 'Calendula', '100ml'),
-    drtuna('DR C TUNA Calendula Face Toner', '1000284', 67000, 'Calendula', '125ml'),
-    drtuna('DR C TUNA Calendula Oil', '1000287', 160000, 'Calendula', '30ml'),
-    drtuna('DR C TUNA Calendula Face Cream', '1000285', 85200, 'Calendula', '50ml'),
-    drtuna('DR C TUNA Calendula Cream Balsam', '1000286', 112900, 'Calendula', '80ml'),
+    // ── DR C TUNA: LÍNEA CABELLO ───────────────────────────────
+    D('DR C TUNA Reviving Champú',           'DRC-CAB-01', 91500,  'Cabello', '225ml'),
+    D('DR C TUNA Reviving Mascarilla',       'DRC-CAB-02', 106500, 'Cabello', '200ml'),
+    D('DR C TUNA Reviving Aceite/Gotas',     'DRC-CAB-03', 133000, 'Cabello', '30ml'),
+    D('DR C TUNA Set Reviving (3 piezas)',   'DRC-CAB-SET', 264800,'Cabello', 'Champú+Mascarilla+Aceite'),
+    D('DR C TUNA Repair Champú',             'DRC-REP-01', 101200, 'Cabello', '225ml'),
+    D('DR C TUNA Repair Mascarilla',         'DRC-REP-02', 101200, 'Cabello', '125ml'),
+    D('DR C TUNA Repair Acondicionador',     'DRC-REP-03', 101200, 'Cabello', '200ml'),
 
-    // ─── DR C TUNA — TEA TREE ────────────────
-    drtuna('DR C TUNA Tea Tree Face Wash', '1000288', 67000, 'Tea Tree', '100ml'),
-    drtuna('DR C TUNA Tea Tree Face Toner', '1000289', 67000, 'Tea Tree', '125ml'),
-    drtuna('DR C TUNA Tea Tree Face Cream', '1000290', 85200, 'Tea Tree', '50ml'),
-    drtuna('DR C TUNA Tea Tree Cream Balsam', '1000291', 112900, 'Tea Tree', '80ml'),
-    drtuna('DR C TUNA Tea Tree Serum', '1000292', 93800, 'Tea Tree', '10ml'),
+    // ── FARMASI: FRAGANCIAS HOMBRE ─────────────────────────────
+    F('His Power Eau de Parfum',             'FAR-FH-01', 186300, 'Fragancias', '100ml · Hombre'),
+    F('Baoli Aqua Eau de Parfum',            'FAR-FH-02', 159900, 'Fragancias', '90ml · Hombre'),
+    F('F70 Eau de Parfum Hombre',            'FAR-FH-03', 144900, 'Fragancias', 'Hombre'),
 
-    // ─── DR C TUNA — TRATAMIENTOS ESPECÍFICOS ─
-    drtuna('DR C TUNA Absolute Super Elixir', '1000991', 329000, 'Tratamientos', '25ml'),
-    drtuna('DR C TUNA Massage Paprika & Chili Balsam', '1000305', 63900, 'Masaje', '150ml'),
-    drtuna('DR C TUNA Massage Pferde Horse Chestnut Balsam', '1000304', 63900, 'Masaje', '150ml'),
+    // ── FARMASI: FRAGANCIAS MUJER ──────────────────────────────
+    F('Her Aqua Eau de Parfum',              'FAR-FM-01', 138500, 'Fragancias', '65ml · Mujer'),
+    F('Sensational Eau de Parfum',           'FAR-FM-02', 133000, 'Fragancias', 'Mujer'),
+    F('Her Passion Eau de Parfum',           'FAR-FM-03', 186300, 'Fragancias', '60ml · Mujer'),
 
-    // ─── DR C TUNA — CABELLO ─────────────────
-    drtuna('DR C TUNA Reviving Hair Oil', '1000311', 133000, 'Cabello Reviving', '30ml'),
-    drtuna('DR C TUNA Reviving Shampoo', '1000309', 91500, 'Cabello Reviving', '225ml'),
-    drtuna('DR C TUNA Reviving Hair Mask', '1000310', 106500, 'Cabello Reviving', '200ml'),
-    drtuna('DR C TUNA Intensive Repair Shampoo', '1000885', 101200, 'Cabello Intensive', '225ml'),
-    drtuna('DR C TUNA Intensive Repair Conditioner', '1000886', 101200, 'Cabello Intensive', '200ml'),
-    drtuna('DR C TUNA Intensive Repair Hair Mask', '1000887', 101200, 'Cabello Intensive', '125ml'),
-
-    // ─── SUPLEMENTOS ──────────────────────────
-    { id:'1001862', name:'Nutriplus Energy Piña-Limón', ref:'1001862', price:186259, margin:30, cost:Math.round(186259*0.70), category:'Suplementos', presentation:'210g', stock:2, sold:0, active:true },
-    { id:'1001898', name:'Nutriplus Energy Mango-Limón', ref:'1001898', price:186400, margin:30, cost:Math.round(186400*0.70), category:'Suplementos', presentation:'240g', stock:2, sold:0, active:true },
-    { id:'1001319', name:'Aloe Glow Sabor Mango', ref:'1001319', price:130449, margin:30, cost:Math.round(130449*0.70), category:'Suplementos', presentation:'450ml', stock:2, sold:0, active:true },
-    { id:'9700003', name:'Café Instantáneo Mezcla Achicoria', ref:'9700003', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'100g', stock:2, sold:0, active:true },
-    { id:'9700004', name:'Café Instantáneo Mezcla Fibra', ref:'9700004', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'100g', stock:2, sold:0, active:true },
-    { id:'9700005', name:'Café Instantáneo Mezcla Premium', ref:'9700005', price:117100, margin:30, cost:Math.round(117100*0.70), category:'Suplementos', presentation:'100g', stock:2, sold:0, active:true },
-    { id:'1000957', name:'Serenity Té Durazno', ref:'1000957', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
-    { id:'1000958', name:'Serenity Té Limón', ref:'1000958', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
-    { id:'1000959', name:'Serenity Té Frambuesa', ref:'1000959', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
-    { id:'1000960', name:'Serenity Té Negro', ref:'1000960', price:95900, margin:30, cost:Math.round(95900*0.70), category:'Suplementos', presentation:'1.7g x30 sobres', stock:2, sold:0, active:true },
-    { id:'9000689', name:'Nutriplus Lily Shaker', ref:'9000689', price:63400, margin:30, cost:Math.round(63400*0.70), category:'Suplementos', presentation:'400ml', stock:2, sold:0, active:true },
+    // ── SUPLEMENTOS: NUTRIPLUS ─────────────────────────────────
+    S('Té Serenety',                         'SUP-TE-01',  95900,  '1.7g x30 sobres'),
+    S('Café Achicoria',                      'SUP-CAF-01', 95900,  '100g'),
+    S('Café Fibra',                          'SUP-CAF-02', 95900,  '100g'),
+    S('Café Achicoria/Colágeno',             'SUP-CAF-03', 117100, '100g'),
+    S('Aloe Glow',                           'SUP-ALO-01', 130450, '450ml'),
+    S('Citrus Mineral',                      'SUP-CIT-01', 186400, 'Suplemento'),
+    S('Guarana Taurine',                     'SUP-GUA-01', 186250, 'Suplemento'),
+    S('Lily Shaker',                         'SUP-SHK-01', 63400,  '400ml'),
+    S('Gomitas Vinagoc',                     'SUP-GOM-01', 111500, 'Gummies'),
   ];
 }
 
@@ -1177,13 +1154,13 @@ function login(user) {
   document.getElementById('user-badge').textContent = user;
   updateDateTime();
   setInterval(updateDateTime, 30000);
-  // If Firebase hasn't loaded products yet, use local
-  if (!products || products.length === 0) {
-    const state = localGet();
-    products = state.products;
-    sales = state.sales;
-  }
+  // Always load local immediately so screen is never blank
+  const state = localGet();
+  if (!products || products.length === 0) products = state.products;
+  if (!sales || sales.length === 0) sales = state.sales;
   renderAll();
+  // Then try Firebase in background
+  if (useFirebase) startListeners();
 }
 
 function logout() {
@@ -1712,22 +1689,10 @@ const FIREBASE_CFG = {
 };
 
 async function init() {
-  // Hide setup, show login immediately
   document.getElementById('setup-overlay').classList.add('hidden');
   document.getElementById('login-screen').style.display = 'flex';
+  useFirebase = true;
   updateDateTime();
-  
-  // Start Firebase listeners in background
-  try {
-    useFirebase = true;
-    startListeners(); // non-blocking
-  } catch(e) {
-    console.warn('Firebase error:', e);
-    useFirebase = false;
-    const state = localGet();
-    products = state.products;
-    sales = state.sales;
-  }
 }
 
 init();
