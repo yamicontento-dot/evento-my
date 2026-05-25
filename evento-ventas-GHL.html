@@ -350,6 +350,16 @@ tr:hover td { background: #fafafa; }
 }
 
 /* ── SECTION DIVIDER ── */
+.date-filter-btn {
+  padding: 6px 14px; border-radius: 20px;
+  border: 1.5px solid var(--border2); background: var(--surface);
+  color: var(--muted); font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+}
+.date-filter-btn:hover { border-color: var(--primary); color: var(--primary); }
+.date-filter-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
 .section-divider {
   display: flex; align-items: center; gap: 12px; margin: 20px 0 14px;
 }
@@ -775,6 +785,12 @@ service cloud.firestore {
   <div class="tab-content" id="tab-resumen">
     <div class="section-header">
       <div class="section-title">Resumen del Evento</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="date-filter-btn active" onclick="setDateFilter('all',this)">Todo el evento</button>
+        <button class="date-filter-btn" onclick="setDateFilter('2026-05-25',this)">Lun 25</button>
+        <button class="date-filter-btn" onclick="setDateFilter('2026-05-26',this)">Mar 26</button>
+        <button class="date-filter-btn" onclick="setDateFilter('2026-05-27',this)">Mié 27</button>
+      </div>
     </div>
     <div class="kpi-grid" id="resumen-kpis"></div>
 
@@ -975,6 +991,7 @@ let products = [];
 let sales = [];
 let useFirebase = false;
 let db = null;
+let activeDateFilter = 'all';
 
 // Local fallback
 function localGet() {
@@ -1265,10 +1282,19 @@ function login(user) {
   document.getElementById('user-badge').textContent = user;
   updateDateTime();
   setInterval(updateDateTime, 30000);
-  // Always load local immediately so screen is never blank
+  
+  // Load products — always use getInitialProducts() as base
+  // so new products in code are always visible, even if localStorage is stale
   const state = localGet();
-  if (!products || products.length === 0) products = state.products;
-  if (!sales || sales.length === 0) sales = state.sales;
+  const initialProds = getInitialProducts();
+  const storedIds = new Set((state.products||[]).map(p => p.id));
+  // Merge: use stored products (which have updated stock/sold) + add any new ones from code
+  const storedMap = {};
+  (state.products||[]).forEach(p => storedMap[p.id] = p);
+  // Start with initial catalog (preserves order, ensures all products present)
+  products = initialProds.map(p => storedMap[p.id] ? {...p, ...storedMap[p.id]} : p);
+  sales = state.sales || [];
+  
   renderAll();
   // Then try Firebase in background
   if (useFirebase) startListeners();
@@ -1323,16 +1349,20 @@ function renderGlamTable() {
   });
   const tbody = document.getElementById('glam-tbody');
   if (!glamProds.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty-state">Sin productos GLAM</div></td></tr>'; return; }
+  const isYamile = currentUser === 'Yamile';
   tbody.innerHTML = glamProds.map(p => {
     const margen = p.price - p.cost;
     const dis = p.stock===0?'disabled':'';
+    const margenCell = isYamile
+      ? `<td style="color:var(--green);font-weight:600">${fmt(margen)} <span style="font-size:9px;color:var(--muted)">(${p.margin}%)</span></td>`
+      : `<td>—</td>`;
     return `<tr>
       <td><div class="product-name">${p.name}</div><div class="product-ref">${p.presentation||''}</div></td>
       <td><span class="cat-pill ${catClass(p.category)}">${catLabel(p.category)}</span></td>
       <td class="cost-cell"><span class="original-price">${fmt(p.originalPrice||p.price)}</span></td>
       <td class="price-cell">${fmt(p.price)}</td>
       <td><span class="discount-badge">-${p.discountPct||0}%</span></td>
-      <td style="color:var(--green);font-weight:600">${fmt(margen)} <span style="font-size:9px;color:var(--muted)">(${p.margin}%)</span></td>
+      ${margenCell}
       <td>${stockBadge(p.stock)}</td>
       <td><button class="btn btn-sell" onclick="openSell('${p.id}')" ${dis}>Vender</button></td>
     </tr>`;
@@ -1466,13 +1496,12 @@ function renderInventarioTable() {
 // HISTORIAL
 // ═══════════════════════════════════════════
 function renderHistorial() {
-  const state = getState();
   const div = document.getElementById('historial-list');
-  if (!state.sales.length) {
+  if (!sales.length) {
     div.innerHTML = '<div class="empty-state">Aún no hay ventas registradas</div>';
     return;
   }
-  const sorted = [...state.sales].reverse();
+  const sorted = [...sales].reverse();
   div.innerHTML = sorted.map(s => {
     const margen = (s.price - s.cost) * s.qty;
     const dt = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
@@ -1492,6 +1521,22 @@ function renderHistorial() {
 // ═══════════════════════════════════════════
 // RESUMEN
 // ═══════════════════════════════════════════
+function setDateFilter(date, btn) {
+  activeDateFilter = date;
+  document.querySelectorAll('.date-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderResumen();
+}
+
+function getFilteredSales() {
+  if (activeDateFilter === 'all') return sales;
+  return sales.filter(s => {
+    const dt = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
+    const dateStr = dt.toISOString().slice(0, 10); // YYYY-MM-DD
+    return dateStr === activeDateFilter;
+  });
+}
+
 function renderResumen() {
   // uses module-level sales array
 
@@ -1554,9 +1599,8 @@ function renderResumen() {
 // ADMIN TABLE
 // ═══════════════════════════════════════════
 function renderAdminTable() {
-  const state = getState();
   const search = (document.getElementById('search-admin')?.value || '').toLowerCase();
-  const prods = state.products.filter(p => !search || p.name.toLowerCase().includes(search) || (p.ref||'').includes(search));
+  const prods = products.filter(p => !search || p.name.toLowerCase().includes(search) || (p.ref||'').includes(search));
   const tbody = document.getElementById('admin-tbody');
 
   tbody.innerHTML = prods.map(p => {
@@ -1580,9 +1624,8 @@ function renderAdminTable() {
 // SELL MODAL
 // ═══════════════════════════════════════════
 function openSell(id) {
-  const state = getState();
-  const p = state.products.find(x => x.id === id);
-  if (!p) return;
+  const p = products.find(x => x.id === id);
+  if (!p) { console.warn('Product not found:', id); return; }
   currentSellId = id;
   sellQty = 1;
   document.getElementById('sell-qty').textContent = 1;
@@ -1600,8 +1643,7 @@ function openSell(id) {
 }
 
 function changeQty(delta) {
-  const state = getState();
-  const p = state.products.find(x => x.id === currentSellId);
+  const p = products.find(x => x.id === currentSellId);
   if (!p) return;
   sellQty = Math.max(1, Math.min(p.stock, sellQty + delta));
   document.getElementById('sell-qty').textContent = sellQty;
@@ -1609,8 +1651,7 @@ function changeQty(delta) {
 }
 
 function updateSellPreview() {
-  const state = getState();
-  const p = state.products.find(x => x.id === currentSellId);
+  const p = products.find(x => x.id === currentSellId);
   if (!p) return;
   const price = parseFloat(document.getElementById('sell-price').value) || p.price;
   const margen = (price - p.cost) * sellQty;
@@ -1636,31 +1677,38 @@ async function confirmSale() {
     timestamp: new Date().toISOString()
   };
 
-  try {
-    if (useFirebase) {
+  // Always save locally first (instant, no failure)
+  const saleId = Date.now().toString();
+  const state = localGet();
+  const lp = state.products.find(x=>x.id===p.id);
+  if (lp) { lp.stock-=sellQty; lp.sold=(lp.sold||0)+sellQty; }
+  state.sales.unshift({...saleData, id: saleId});
+  localSave(state);
+  // Update in-memory
+  const mp = products.find(x=>x.id===p.id);
+  if (mp) { mp.stock-=sellQty; mp.sold=(mp.sold||0)+sellQty; }
+  sales.unshift({...saleData, id: saleId});
+  
+  closeModal('modal-sell');
+  showToast('✓ Venta registrada · ' + fmt(price*sellQty));
+  renderAll();
+
+  // Also try Firebase in background (non-blocking)
+  if (useFirebase && db) {
+    try {
       await Promise.all([
-        db.collection('sales').add(saleData),
-        db.collection('products').doc(p.id).update({ stock: p.stock-sellQty, sold: (p.sold||0)+sellQty })
+        db.collection('sales').add({...saleData, localId: saleId}),
+        db.collection('products').doc(p.id).update({ stock: mp ? mp.stock : p.stock-sellQty, sold: mp ? mp.sold : (p.sold||0)+sellQty })
       ]);
-    } else {
-      const state = localGet();
-      const lp = state.products.find(x=>x.id===p.id);
-      if (lp) { lp.stock-=sellQty; lp.sold=(lp.sold||0)+sellQty; }
-      state.sales.unshift({...saleData, id: Date.now().toString()});
-      localSave(state);
-      products=state.products; sales=state.sales; renderAll();
-    }
-    closeModal('modal-sell');
-    showToast(`✓ Venta registrada · ${fmt(price*sellQty)}`);
-  } catch(e) { showToast('Error: '+e.message, true); }
+    } catch(e) { console.warn('Firebase sync failed (sale saved locally):', e.message); }
+  }
 }
 
 // ═══════════════════════════════════════════
 // EDIT MODAL
 // ═══════════════════════════════════════════
 function openEdit(id) {
-  const state = getState();
-  const p = state.products.find(x => x.id === id);
+  const p = products.find(x => x.id === id);
   if (!p) return;
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-name').value = p.name;
