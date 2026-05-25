@@ -464,6 +464,41 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   </div>
 </div>
 
+<!-- MODAL EDITAR VENTA -->
+<div class="modal-overlay hidden" id="modal-edit-sale">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar Venta</div>
+    <input type="hidden" id="es-id">
+    <div class="form-group"><label class="form-label">Producto</label>
+      <div id="es-product-name" style="font-weight:600;font-size:14px;color:var(--text);padding:8px 0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Cantidad</label>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeEditQty(-1)">−</button>
+        <span class="qty-num" id="es-qty">1</span>
+        <button class="qty-btn" onclick="changeEditQty(1)">+</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Precio Unitario</label>
+      <input class="form-input" id="es-price" type="number" oninput="updateEditPreview()">
+    </div>
+    <div class="form-group"><label class="form-label">Comprador</label>
+      <input class="form-input" id="es-buyer" placeholder="Nombre completo">
+    </div>
+    <div class="form-group"><label class="form-label">Cédula</label>
+      <input class="form-input" id="es-cedula" placeholder="Número de cédula" inputmode="numeric">
+    </div>
+    <div class="form-group"><label class="form-label">Notas</label>
+      <input class="form-input" id="es-notes" placeholder="efectivo, transferencia...">
+    </div>
+    <div class="preview-box" id="es-preview"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-edit-sale')">Cancelar</button>
+      <button class="btn-primary" onclick="saveEditSale()">Guardar Cambios</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -656,8 +691,8 @@ function getInitialProducts() {
         G('Farmasi VFX Pro Liquid Concealer 04','GLAM-FAR-CON04', 49500, 50, 1, 'GLAM Farmasi', '6ml · Corrector líquido'),
         G('Farmasi Eye Pencil Burgundy 09','GLAM-FAR-EP09', 41500, 50, 1, 'GLAM Farmasi', 'Lápiz ojos · Burgundy'),
         G('Farmasi Matte Liquid Lipstick 08 Sunset Breeze','GLAM-FAR-LL08', 61800, 50, 1, 'GLAM Farmasi', '4ml · Sunset Breeze'),
-        G('Farmasi Pestañina ZEN Super Alargadora','GLAM-FAR-ZEN', 40000, 50, 1, 'GLAM Farmasi', 'Máscara alargadora'),
-        G('Farmasi Primer de Sombras',  'GLAM-FAR-PS', 50000, 50, 1, 'GLAM Farmasi', 'Base sombras'),
+        F('Pestañina ZEN Super Alargadora','FAR-ZEN-001', 40000, 'Maquillaje', 'Máscara alargadora'),
+        F('Primer de Sombras Farmasi','FAR-PS-001', 50000, 'Maquillaje', 'Base sombras'),
     ];
   })());
 }
@@ -864,7 +899,10 @@ function renderHistorial(){
       <div class="sale-meta">${dtStr} · <strong>${s.user}</strong>${buyerInfo}${s.notes?' · '+s.notes:''}</div>
       <div class="sale-bottom">
         <span class="sale-margin-text">+${fmt(margen)} margen</span>
-        <button class="btn btn-danger" onclick="deleteSale('${s.id}')" style="padding:4px 8px;font-size:11px">✕ Eliminar</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-edit" onclick="openEditSale('${s.id}')" style="padding:4px 8px;font-size:11px">✏️</button>
+          <button class="btn btn-danger" onclick="deleteSale('${s.id}')" style="padding:4px 8px;font-size:11px">✕</button>
+        </div>
       </div>
     </div>`;
   }).join('');}
@@ -1116,6 +1154,71 @@ async function toggleActive(id){
 }
 
 // ── DELETE SALE ───────────────────────────────
+let editSaleQty=1;
+
+function openEditSale(saleId){
+  const s=sales.find(x=>x.id===saleId);if(!s)return;
+  document.getElementById('es-id').value=saleId;
+  document.getElementById('es-product-name').textContent=s.productName;
+  editSaleQty=s.qty;
+  document.getElementById('es-qty').textContent=s.qty;
+  document.getElementById('es-price').value=s.price;
+  document.getElementById('es-buyer').value=s.buyer||'';
+  document.getElementById('es-cedula').value=s.cedula||'';
+  document.getElementById('es-notes').value=s.notes||'';
+  updateEditPreview();
+  document.getElementById('modal-edit-sale').classList.remove('hidden');
+}
+
+function changeEditQty(d){
+  const s=sales.find(x=>x.id===document.getElementById('es-id').value);
+  if(!s)return;
+  const p=products.find(x=>x.id===s.productId);
+  const maxStock=(p?p.stock:0)+s.qty; // current stock + what was sold
+  editSaleQty=Math.max(1,Math.min(maxStock,editSaleQty+d));
+  document.getElementById('es-qty').textContent=editSaleQty;
+  updateEditPreview();
+}
+
+function updateEditPreview(){
+  const s=sales.find(x=>x.id===document.getElementById('es-id').value);if(!s)return;
+  const price=parseFloat(document.getElementById('es-price').value)||s.price;
+  const total=price*editSaleQty;
+  const margen=(price-s.cost)*editSaleQty;
+  document.getElementById('es-preview').textContent='Total: '+fmt(total)+' | Margen: '+fmt(margen)+' | Qty: '+editSaleQty;
+}
+
+async function saveEditSale(){
+  const saleId=document.getElementById('es-id').value;
+  const s=sales.find(x=>x.id===saleId);if(!s)return;
+  const newPrice=parseFloat(document.getElementById('es-price').value)||s.price;
+  const newBuyer=document.getElementById('es-buyer').value.trim();
+  const newCedula=document.getElementById('es-cedula').value.trim();
+  const newNotes=document.getElementById('es-notes').value.trim();
+  const qtyDiff=editSaleQty-s.qty; // positive = more sold, negative = less sold
+  // Update stock
+  const p=products.find(x=>x.id===s.productId);
+  if(p){p.stock-=qtyDiff;p.sold=(p.sold||0)+qtyDiff;}
+  // Update sale in memory
+  Object.assign(s,{price:newPrice,qty:editSaleQty,total:newPrice*editSaleQty,buyer:newBuyer,cedula:newCedula,notes:newNotes});
+  // Save locally
+  const st=lGet();
+  const ls=st.sales&&st.sales.find(x=>x.id===saleId);
+  if(ls)Object.assign(ls,{price:newPrice,qty:editSaleQty,total:newPrice*editSaleQty,buyer:newBuyer,cedula:newCedula,notes:newNotes});
+  const lp=st.products&&st.products.find(x=>x.id===s.productId);
+  if(lp){lp.stock-=qtyDiff;lp.sold=(lp.sold||0)+qtyDiff;}
+  lSave(st);
+  closeModal('modal-edit-sale');
+  showToast('✓ Venta actualizada');
+  renderAll();
+  // Firebase sync
+  try{
+    const updates={price:newPrice,qty:editSaleQty,total:newPrice*editSaleQty,buyer:newBuyer,cedula:newCedula,notes:newNotes};
+    await fbUpdate('sales',saleId,updates);
+    if(p)await fbUpdate('products',s.productId,{stock:p.stock,sold:p.sold});
+  }catch(e){console.warn('Firebase sync:',e.message);}
+}
+
 async function deleteSale(saleId){
   if(!confirm('¿Eliminar esta venta? Se restaura el stock.'))return;
   const s=sales.find(x=>x.id===saleId);if(!s)return;
