@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Evento M&Y — Gestión de Ventas</title>
+<style>
+:root{--bg:#f4f5f7;--surface:#fff;--surface2:#f9fafb;--border:#e5e7eb;--border2:#d1d5db;--primary:#0055fb;--primary-d:#0041c4;--primary-l:#eff4ff;--primary-b:#c7d9ff;--text:#111827;--text2:#374151;--muted:#6b7280;--muted2:#9ca3af;--red:#ef4444;--red-bg:#fef2f2;--green:#16a34a;--green-bg:#f0fdf4;--green-b:#bbf7d0;--orange:#ea580c;--orange-bg:#fff7ed;--orange-b:#fed7aa;--gold:#b45309;--gold-bg:#fffbeb;--gold-b:#fde68a;--teal:#0891b2;--r:8px;--sh:0 1px 3px rgba(0,0,0,.10),0 1px 2px rgba(0,0,0,.06);--sh-sm:0 1px 2px rgba(0,0,0,.05);}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow-x:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased;}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px;}
+#login-screen.hidden{display:none;}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px 28px;width:100%;max-width:340px;box-shadow:var(--sh);}
+.login-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.login-sub{color:var(--muted);font-size:13px;margin-bottom:24px;}
+.user-btns{display:flex;flex-direction:column;gap:10px;}
+.user-btn{padding:13px 16px;border-radius:var(--r);border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:10px;width:100%;text-align:left;}
+.user-btn:hover,.user-btn:active{border-color:var(--primary);background:var(--primary-l);color:var(--primary);}
+.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+.av-m{background:#ede9fe;color:#7c3aed;}
+.av-y{background:#dcfce7;color:#16a34a;}
+.yamile-auth{display:none;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r);margin-top:-4px;}
+.yamile-auth input{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);padding:9px 11px;font-size:13px;outline:none;margin-bottom:8px;}
+.yamile-auth input:focus{border-color:var(--primary);}
+.auth-btn{width:100%;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:600;cursor:pointer;}
+.auth-err{color:var(--red);font-size:12px;text-align:center;margin-top:5px;display:none;}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;box-shadow:var(--sh-sm);}
+.hbrand{font-size:15px;font-weight:700;color:var(--text);}
+.hright{display:flex;gap:6px;align-items:center;}
+.badge{font-size:11px;padding:3px 8px;border-radius:5px;font-weight:600;white-space:nowrap;}
+.badge-u{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;}
+.badge-live{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b);}
+.logout-btn{padding:5px 10px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:11px;font-weight:500;cursor:pointer;}
+.logout-btn:active{background:var(--red-bg);border-color:var(--red);color:var(--red);}
+
+/* TABS */
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:0 14px;height:42px;display:flex;align-items:center;gap:5px;font-size:13px;font-weight:500;color:var(--muted);border:none;background:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600;}
+.tab-glam{color:var(--gold)!important;}
+.tab-glam.active{color:var(--gold)!important;border-bottom-color:var(--gold)!important;}
+
+/* LIVE */
+#live-ind{position:fixed;top:58px;right:12px;background:var(--green-bg);border:1px solid var(--green-b);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--green);font-weight:600;z-index:50;opacity:0;transition:opacity .3s;pointer-events:none;}
+#live-ind.show{opacity:1;}
+
+/* MAIN */
+main{padding:14px;max-width:1200px;margin:0 auto;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+@media(min-width:500px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;box-shadow:var(--sh-sm);}
+.kpi-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;}
+.kpi-value{font-size:18px;font-weight:700;color:var(--text);line-height:1;}
+.kpi-value.green{color:var(--green);}
+.kpi-value.blue{color:var(--primary);}
+.kpi-value.teal{color:var(--teal);}
+.kpi-sub{font-size:10px;color:var(--muted2);margin-top:3px;}
+
+/* SECTION */
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap;}
+.sec-title{font-size:15px;font-weight:600;color:var(--text);}
+
+/* FILTERS */
+.filters{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.search-input,.filter-select{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);padding:8px 10px;font-size:13px;outline:none;transition:all .15s;box-shadow:var(--sh-sm);}
+.search-input{flex:1;min-width:140px;}
+.search-input:focus,.filter-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l);}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);box-shadow:var(--sh-sm);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead{background:var(--surface2);}
+th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#fafafa;}
+.p-name{font-weight:500;color:var(--text);line-height:1.3;}
+.p-ref{font-size:10px;color:var(--muted2);font-family:monospace;margin-top:1px;}
+.price-c{font-weight:600;color:var(--text);white-space:nowrap;}
+.cost-c{color:var(--muted);font-size:12px;}
+.orig-price{text-decoration:line-through;color:var(--muted2);font-size:11px;margin-right:3px;}
+.dcto-badge{font-size:10px;background:var(--red-bg);color:var(--red);border:1px solid #fecaca;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:3px;}
+
+/* STOCK */
+.stock-b{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:20px;border-radius:4px;font-size:11px;font-weight:700;}
+.s-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b);}
+.s-low{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-b);}
+.s-out{background:var(--red-bg);color:var(--red);border:1px solid #fecaca;}
+
+/* CAT PILLS */
+.cat-pill{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600;white-space:nowrap;}
+.cat-far{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+.cat-fra{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;}
+.cat-per{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b);}
+.cat-drc{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-b);}
+.cat-sup{background:#ecfeff;color:var(--teal);border:1px solid #a5f3fc;}
+.cat-mac{background:#1a1a1a;color:#d4a843;border:1px solid #333;}
+.cat-clin{background:#e8f5f0;color:#2d7a5a;border:1px solid #a8d8c4;}
+.cat-el{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;}
+.cat-farg{background:#fff0f5;color:#c0396b;border:1px solid #f8c0d4;}
+
+/* BUTTONS */
+.btn{padding:5px 10px;border-radius:6px;border:1px solid;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;white-space:nowrap;}
+.btn-sell{border-color:var(--primary);color:var(--primary);background:var(--primary-l);}
+.btn-sell:hover,.btn-sell:active{background:var(--primary);color:#fff;}
+.btn-sell:disabled{opacity:.4;cursor:not-allowed;}
+.btn-edit{border-color:var(--border2);color:var(--muted);background:var(--surface);}
+.btn-edit:active{border-color:var(--primary);color:var(--primary);}
+.btn-danger{border-color:#fecaca;color:var(--red);background:var(--red-bg);}
+.btn-danger:active{background:var(--red);color:#fff;}
+.btn-primary{padding:9px 16px;border-radius:var(--r);background:var(--primary);color:#fff;border:none;font-weight:600;font-size:13px;cursor:pointer;transition:background .15s;white-space:nowrap;box-shadow:var(--sh-sm);}
+.btn-primary:active{background:var(--primary-d);}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(17,24,39,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center;padding:0;}
+@media(min-width:600px){.modal-overlay{align-items:center;padding:20px;}}
+.modal-overlay.hidden{display:none;}
+.modal{background:var(--surface);border-radius:16px 16px 0 0;padding:24px 20px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;}
+@media(min-width:600px){.modal{border-radius:16px;}}
+.modal-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:16px;}
+.form-group{margin-bottom:13px;}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;}
+.form-input,.form-select{width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);color:var(--text);padding:10px 11px;font-size:14px;outline:none;transition:all .15s;}
+.form-input:focus,.form-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-l);}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+.btn-cancel{padding:9px 16px;border-radius:var(--r);background:transparent;border:1px solid var(--border2);color:var(--muted);font-size:13px;cursor:pointer;}
+.preview-box{background:var(--primary-l);border:1px solid var(--primary-b);border-radius:var(--r);padding:10px 13px;font-size:12px;color:var(--primary);font-weight:500;margin-top:6px;}
+
+/* QTY */
+.qty-control{display:flex;align-items:center;gap:10px;}
+.qty-btn{width:32px;height:32px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+.qty-btn:active{border-color:var(--primary);color:var(--primary);}
+.qty-num{font-size:16px;font-weight:700;min-width:28px;text-align:center;}
+
+/* SALE ROWS */
+.sale-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh-sm);}
+.sale-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.sale-product{font-weight:500;color:var(--text);font-size:13px;line-height:1.3;}
+.sale-amount{font-weight:700;color:var(--text);font-size:14px;white-space:nowrap;flex-shrink:0;}
+.sale-meta{font-size:11px;color:var(--muted2);margin-top:4px;line-height:1.4;}
+.sale-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.sale-margin-text{font-size:12px;color:var(--green);font-weight:600;}
+
+/* GLAM */
+.glam-header{background:linear-gradient(135deg,#1a1a1a,#2d2010);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;}
+.glam-title{font-size:20px;font-weight:700;color:#d4a843;}
+.glam-sub{font-size:11px;color:#a08040;margin-top:2px;}
+
+/* DATE FILTER */
+.date-filters{display:flex;gap:6px;flex-wrap:wrap;}
+.df-btn{padding:6px 12px;border-radius:20px;border:1.5px solid var(--border2);background:var(--surface);color:var(--muted);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;}
+.df-btn.active{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+
+/* ADD PRODUCT */
+.add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px;box-shadow:var(--sh-sm);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:400px){.form-grid{grid-template-columns:1fr;}}
+.margin-prev{background:#ecfeff;border:1px solid #a5f3fc;border-radius:var(--r);padding:8px 12px;font-size:12px;color:var(--teal);margin-top:8px;}
+
+/* DIVIDER */
+.sec-div{display:flex;align-items:center;gap:10px;margin:16px 0 12px;}
+.sec-div span{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+.sec-div::before,.sec-div::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:13px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%) translateY(80px);background:#111;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;opacity:0;transition:all .3s;max-width:calc(100vw - 32px);text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.3);}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+#toast.err{background:var(--red);}
+
+/* INFO ROWS */
+.info-row{display:flex;gap:6px;font-size:12px;color:var(--muted);margin-bottom:5px;}
+.info-row strong{color:var(--text2);font-weight:600;min-width:65px;}
+</style>
+</head>
+<body>
+
+<!-- FIREBASE REST -->
+<script>
+const FB_API_KEY="AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s",FB_PROJECT="evento-my",FB_BASE=`https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`,POLL_MS=4000;
+function fromFB(v){if(!v)return null;if(v.stringValue!==undefined)return v.stringValue;if(v.integerValue!==undefined)return parseInt(v.integerValue);if(v.doubleValue!==undefined)return parseFloat(v.doubleValue);if(v.booleanValue!==undefined)return v.booleanValue;if(v.nullValue!==undefined)return null;if(v.timestampValue!==undefined)return v.timestampValue;if(v.mapValue){const o={};for(const[k,val]of Object.entries(v.mapValue.fields||{}))o[k]=fromFB(val);return o;}if(v.arrayValue)return(v.arrayValue.values||[]).map(fromFB);return null;}
+function toFB(v){if(v===null||v===undefined)return{nullValue:null};if(typeof v==='boolean')return{booleanValue:v};if(typeof v==='number'){if(Number.isInteger(v))return{integerValue:String(v)};return{doubleValue:v};}if(typeof v==='string')return{stringValue:v};if(v instanceof Date)return{timestampValue:v.toISOString()};if(Array.isArray(v))return{arrayValue:{values:v.map(toFB)}};if(typeof v==='object'){const f={};for(const[k,val]of Object.entries(v))f[k]=toFB(val);return{mapValue:{fields:f}};}return{stringValue:String(v)};}
+function parseDoc(doc){if(!doc.name)return null;const id=doc.name.split('/').pop();const data={};for(const[k,v]of Object.entries(doc.fields||{}))data[k]=fromFB(v);return{id,...data};}
+function toFields(obj){const f={};for(const[k,v]of Object.entries(obj))f[k]=toFB(v);return{fields:f};}
+async function fbList(col,ob,od='DESCENDING'){let url=`${FB_BASE}/${col}?key=${FB_API_KEY}&pageSize=500`;if(ob)url+=`&orderBy=${ob} ${od}`;try{const r=await fetch(url);if(!r.ok)return null;const d=await r.json();return(d.documents||[]).map(parseDoc).filter(Boolean);}catch{return null;}}
+async function fbSet(col,id,obj){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_KEY}`;const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(toFields(obj))});return r.ok;}
+async function fbUpdate(col,id,obj){const mask=Object.keys(obj).map(k=>`updateMask.fieldPaths=${k}`).join('&');const url=`${FB_BASE}/${col}/${id}?key=${FB_API_KEY}&${mask}`;const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(toFields(obj))});return r.ok;}
+async function fbAdd(col,obj){const url=`${FB_BASE}/${col}?key=${FB_API_KEY}`;const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(toFields(obj))});return r.ok;}
+async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_KEY}`;const r=await fetch(url,{method:'DELETE'});return r.ok;}
+</script>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-title">M &amp; Y · Ventas</div>
+    <div class="login-sub">Evento Mayo 25–27</div>
+    <div class="user-btns">
+      <button class="user-btn" onclick="login('Milena')">
+        <div class="av av-m">M</div>Milena
+      </button>
+      <div>
+        <button class="user-btn" onclick="toggleYamileForm()" style="border-color:#16a34a">
+          <div class="av av-y">Y</div>Yamile<span style="font-size:11px;color:var(--muted);margin-left:auto">🔒</span>
+        </button>
+        <div class="yamile-auth" id="yamile-auth">
+          <input type="email" id="yamile-email" placeholder="yamicontento@gmail.com" onkeydown="if(event.key==='Enter')loginYamile()">
+          <button class="auth-btn" onclick="loginYamile()">Entrar como Yamile →</button>
+          <div class="auth-err" id="yamile-err">Correo incorrecto ✗</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="hbrand">M &amp; Y · Ventas</div>
+  <div class="hright">
+    <span class="badge badge-live">● Live</span>
+    <span class="badge badge-u" id="user-badge">—</span>
+    <button class="logout-btn" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('ventas',this)">🛒 Vender</button>
+  <button class="tab" onclick="switchTab('inventario',this)">📦 Inventario</button>
+  <button class="tab" onclick="switchTab('historial',this)">🧾 Historial</button>
+  <button class="tab" onclick="switchTab('resumen',this)">📊 Resumen</button>
+  <button class="tab tab-glam" onclick="switchTab('glam',this)">✨ GLAM</button>
+  <button class="tab" onclick="switchTab('admin',this)">⚙️ Admin</button>
+  <button class="tab" onclick="openModule('skin-analyzer.html')" style="color:#c8973a">🔬 Skin</button>
+  <button class="tab" onclick="openModule('ruleta-farmasi.html')" style="color:#9b5de5">🎰 Ruleta</button>
+</div>
+<div id="live-ind">↻ Actualizado</div>
+
+<main>
+
+<!-- VENDER -->
+<div class="tab-content active" id="tab-ventas">
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="sec-header"><div class="sec-title">Registrar Venta</div></div>
+  <div class="filters">
+    <input class="search-input" id="sv-search" placeholder="🔍 Buscar producto..." oninput="renderVentas()">
+    <select class="filter-select" id="sv-cat" onchange="renderVentas()">
+      <option value="">Todas las categorías</option>
+      <option value="DR C TUNA">DR C TUNA</option>
+      <option value="Farmasi Maquillaje">Farmasi Maquillaje</option>
+      <option value="Farmasi Fragancias">Farmasi Fragancias</option>
+      <option value="Farmasi Cuidado Personal">Farmasi Cuidado Personal</option>
+      <option value="Suplementos">Suplementos</option>
+      <option value="GLAM MAC">✨ MAC</option>
+      <option value="GLAM Clinique">✨ Clinique</option>
+      <option value="GLAM Estee Lauder">✨ Estée Lauder</option>
+      <option value="GLAM Farmasi">✨ Farmasi GLAM</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table><thead><tr><th>Producto</th><th>Cat</th><th>Precio</th><th>Stock</th><th></th></tr></thead>
+    <tbody id="ventas-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- INVENTARIO -->
+<div class="tab-content" id="tab-inventario">
+  <div class="sec-header"><div class="sec-title">Inventario Completo</div></div>
+  <div class="filters">
+    <input class="search-input" id="inv-search" placeholder="🔍 Buscar..." oninput="renderInventario()">
+    <select class="filter-select" id="inv-cat" onchange="renderInventario()">
+      <option value="">Todas las categorías</option>
+      <option value="DR C TUNA">DR C TUNA</option>
+      <option value="Farmasi Maquillaje">Farmasi Maquillaje</option>
+      <option value="Farmasi Fragancias">Farmasi Fragancias</option>
+      <option value="Farmasi Cuidado Personal">Farmasi Cuidado Personal</option>
+      <option value="Suplementos">Suplementos</option>
+      <option value="GLAM MAC">✨ MAC</option>
+      <option value="GLAM Clinique">✨ Clinique</option>
+      <option value="GLAM Estee Lauder">✨ Estée Lauder</option>
+      <option value="GLAM Farmasi">✨ Farmasi GLAM</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table><thead><tr><th>Producto</th><th>Cat</th><th>Precio</th><th>Costo</th><th>Mgn%</th><th>Stock</th><th>Vnd</th><th></th></tr></thead>
+    <tbody id="inv-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- HISTORIAL -->
+<div class="tab-content" id="tab-historial">
+  <div class="sec-header">
+    <div class="sec-title">Historial de Ventas</div>
+    <button class="btn-primary" onclick="exportCSV()">⬇ Excel</button>
+  </div>
+  <div id="historial-list"></div>
+</div>
+
+<!-- RESUMEN -->
+<div class="tab-content" id="tab-resumen">
+  <div class="sec-header">
+    <div class="sec-title">Resumen</div>
+    <div class="date-filters">
+      <button class="df-btn active" onclick="setDate('all',this)">Todo</button>
+      <button class="df-btn" onclick="setDate('2026-05-25',this)">Lun 25</button>
+      <button class="df-btn" onclick="setDate('2026-05-26',this)">Mar 26</button>
+      <button class="df-btn" onclick="setDate('2026-05-27',this)">Mié 27</button>
+    </div>
+  </div>
+  <div class="kpi-grid" id="res-kpis"></div>
+
+  <div class="sec-div"><span>Farmasi vs GLAM</span></div>
+  <div class="kpi-grid" id="res-split"></div>
+
+  <div class="sec-div"><span>Por Vendedora</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Vendedora</th><th>Uds</th><th>Ingresos</th></tr></thead>
+  <tbody id="res-usuarios"></tbody></table></div>
+
+  <div class="sec-div"><span>Por Categoría</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Categoría</th><th>Uds</th><th>Ingresos</th><th>Margen</th></tr></thead>
+  <tbody id="res-cats"></tbody></table></div>
+
+  <div class="sec-div"><span>Top Productos</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Producto</th><th>Uds</th><th>Ingresos</th></tr></thead>
+  <tbody id="res-top"></tbody></table></div>
+</div>
+
+<!-- GLAM -->
+<div class="tab-content" id="tab-glam">
+  <div class="glam-header">
+    <div><div class="glam-title">✨ glam by yam</div><div class="glam-sub">Inventario Yamile · Evento M&amp;Y</div></div>
+    <div id="glam-mgn-badge" style="display:none;text-align:right"><div style="font-size:10px;color:#a08040;text-transform:uppercase;letter-spacing:.5px">Margen</div><div style="font-size:22px;font-weight:700;color:#d4a843">66%</div></div>
+  </div>
+  <div class="kpi-grid" id="glam-kpis"></div>
+  <div class="filters">
+    <input class="search-input" id="glam-search" placeholder="🔍 Buscar GLAM..." oninput="renderGlam()">
+    <select class="filter-select" id="glam-cat" onchange="renderGlam()">
+      <option value="">Todas las marcas</option>
+      <option value="GLAM MAC">MAC</option>
+      <option value="GLAM Clinique">Clinique</option>
+      <option value="GLAM Estee Lauder">Estée Lauder</option>
+      <option value="GLAM Farmasi">Farmasi</option>
+    </select>
+  </div>
+  <div class="table-wrap">
+    <table><thead><tr><th>Producto</th><th>Marca</th><th>Precio Público</th><th>Precio Evento</th><th>Dcto</th><th id="glam-mgn-col" style="display:none">Margen</th><th>Stock</th><th></th></tr></thead>
+    <tbody id="glam-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="tab-content" id="tab-admin">
+  <div class="sec-header"><div class="sec-title">Agregar Producto</div></div>
+  <div class="add-form">
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Nombre *</label><input class="form-input" id="new-name" placeholder="Nombre del producto"></div>
+      <div class="form-group"><label class="form-label">Referencia</label><input class="form-input" id="new-ref" placeholder="REF-001"></div>
+      <div class="form-group"><label class="form-label">Categoría *</label>
+        <select class="form-select" id="new-cat" onchange="autoMargin()">
+          <option value="DR C TUNA">DR C TUNA</option>
+          <option value="Farmasi Maquillaje">Farmasi Maquillaje</option>
+          <option value="Farmasi Fragancias">Farmasi Fragancias</option>
+          <option value="Farmasi Cuidado Personal">Farmasi Cuidado Personal</option>
+          <option value="Suplementos">Suplementos</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Presentación</label><input class="form-input" id="new-pres" placeholder="30ml, 4g..."></div>
+      <div class="form-group"><label class="form-label">Precio Venta (COP) *</label><input class="form-input" id="new-price" type="number" oninput="autoMargin()"></div>
+      <div class="form-group"><label class="form-label">Margen %</label><input class="form-input" id="new-margin" type="number" value="30" oninput="updateMarginPreview()"></div>
+      <div class="form-group"><label class="form-label">Stock</label><input class="form-input" id="new-stock" type="number" value="2" min="0"></div>
+    </div>
+    <div class="margin-prev" id="margin-prev">Ingresa precio para ver el margen</div>
+    <div style="margin-top:12px"><button class="btn-primary" onclick="addProduct()">+ Agregar Producto</button></div>
+  </div>
+  <div class="sec-div"><span>Gestión de Inventario</span></div>
+  <div class="filters"><input class="search-input" id="admin-search" placeholder="🔍 Buscar..." oninput="renderAdmin()"></div>
+  <div class="table-wrap"><table><thead><tr><th>Producto</th><th>Precio</th><th>Mgn%</th><th>Stock</th><th></th></tr></thead>
+  <tbody id="admin-tbody"></tbody></table></div>
+</div>
+
+</main>
+
+<!-- MODAL VENTA -->
+<div class="modal-overlay hidden" id="modal-sell">
+  <div class="modal">
+    <div class="modal-title">Registrar Venta</div>
+    <div id="sell-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:14px;font-size:13px;"></div>
+    <div class="form-group"><label class="form-label">Cantidad</label>
+      <div class="qty-control">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <span class="qty-num" id="sell-qty">1</span>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Precio de Venta</label>
+      <input class="form-input" id="sell-price" type="number" oninput="updatePreview()">
+    </div>
+    <div class="form-group"><label class="form-label">Nombre del Comprador</label>
+      <input class="form-input" id="sell-buyer" placeholder="Nombre completo">
+    </div>
+    <div class="form-group"><label class="form-label">Cédula</label>
+      <input class="form-input" id="sell-cedula" placeholder="Número de cédula" inputmode="numeric">
+    </div>
+    <div class="form-group"><label class="form-label">Notas</label>
+      <input class="form-input" id="sell-notes" placeholder="efectivo, transferencia, descuento...">
+    </div>
+    <div class="preview-box" id="sell-preview"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-sell')">Cancelar</button>
+      <button class="btn-primary" onclick="confirmSale()">✓ Confirmar Venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR -->
+<div class="modal-overlay hidden" id="modal-edit">
+  <div class="modal">
+    <div class="modal-title">Editar Producto</div>
+    <input type="hidden" id="edit-id">
+    <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="edit-name"></div>
+    <div class="form-group"><label class="form-label">Precio de Venta (COP)</label><input class="form-input" id="edit-price" type="number"></div>
+    <div class="form-group"><label class="form-label">Margen %</label><input class="form-input" id="edit-margin" type="number"></div>
+    <div class="form-group"><label class="form-label">Stock</label><input class="form-input" id="edit-stock" type="number" min="0"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-edit')">Cancelar</button>
+      <button class="btn-primary" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── STATE ────────────────────────────────────
+let currentUser=null,currentSellId=null,sellQty=1,products=[],sales=[],activeDateFilter='all';
+
+// ── LOCAL STORAGE ────────────────────────────
+function lGet(){const r=localStorage.getItem('my_ev_v5');if(r)return JSON.parse(r);return{products:[],sales:[]};}
+function lSave(s){localStorage.setItem('my_ev_v5',JSON.stringify(s));}
+
+// ── CATALOG ──────────────────────────────────
+function getInitialProducts() {
+  const D = (name, ref, price, sub='', pres='') => ({
+    id: ref, name, ref, price, margin: 50,
+    cost: Math.round(price * 0.50),
+    category: 'DR C TUNA', subcategory: sub,
+    presentation: pres, stock: 2, sold: 0, active: true
+  });
+  const F = (name, ref, price, sub, pres='') => ({
+    id: ref, name, ref, price, margin: 30,
+    cost: Math.round(price * 0.70),
+    category: 'Farmasi ' + sub,
+    presentation: pres, stock: 2, sold: 0, active: true
+  });
+  const S = (name, ref, price, pres='') => ({
+    id: ref, name, ref, price, margin: 30,
+    cost: Math.round(price * 0.70),
+    category: 'Suplementos',
+    presentation: pres, stock: 2, sold: 0, active: true
+  });
+
+  return [
+    // ── DR C TUNA: LÍNEA CALENDULA ─────────────────────────────
+    D('DR C TUNA Calendula Limpiador',       'DRC-CAL-01', 67000,  'Calendula', '100ml · Pieles sensibles/irritadas'),
+    D('DR C TUNA Calendula Crema Facial',    'DRC-CAL-02', 85200,  'Calendula', '50ml'),
+    D('DR C TUNA Calendula Balsamo Crema',   'DRC-CAL-03', 112900, 'Calendula', '80ml'),
+    D('DR C TUNA Calendula Aceite',          'DRC-CAL-04', 160000, 'Calendula', '30ml'),
+    D('DR C TUNA Calendula Tonico Facial',   'DRC-CAL-05', 67000,  'Calendula', '125ml'),
+    D('DR C TUNA Set Calendula (4 piezas)',  'DRC-CAL-SET', 265680, 'Calendula', 'Limpiador+Tonico+Crema+Balsamo'),
+
+    // ── DR C TUNA: LÍNEA TEA TREE ──────────────────────────────
+    D('DR C TUNA Tea Tree Limpiador',        'DRC-TT-01', 67000,  'Tea Tree', '100ml · Pieles grasas/antibacterial'),
+    D('DR C TUNA Tea Tree Crema Facial',     'DRC-TT-02', 85200,  'Tea Tree', '50ml'),
+    D('DR C TUNA Tea Tree Balsamo Crema',    'DRC-TT-03', 112900, 'Tea Tree', '80ml'),
+    D('DR C TUNA Tea Tree Suero',            'DRC-TT-04', 93800,  'Tea Tree', '10ml'),
+    D('DR C TUNA Tea Tree Tonico',           'DRC-TT-05', 67000,  'Tea Tree', '125ml'),
+    D('DR C TUNA Set Tea Tree (5 piezas)',   'DRC-TT-SET', 340720, 'Tea Tree', 'Limpiador+Tonico+Suero+Crema+Balsamo'),
+
+    // ── DR C TUNA: LÍNEA AQUA ──────────────────────────────────
+    D('DR C TUNA Aqua Limpiador',            'DRC-AQ-01', 100000, 'Aqua', '100ml · Hidratación pieles deshidratadas'),
+    D('DR C TUNA Aqua Hidratante',           'DRC-AQ-02', 227000, 'Aqua', '50ml'),
+    D('DR C TUNA Aqua Contorno Ojos',        'DRC-AQ-03', 85200,  'Aqua', '20ml'),
+    D('DR C TUNA Aqua Suero/Gotas Hidra',    'DRC-AQ-04', 198000, 'Aqua', '30ml'),
+    D('DR C TUNA Set Aqua (4 piezas)',       'DRC-AQ-SET', 488160, 'Aqua', 'Limpiador+Contorno+Hidratante+Gotas/Suero'),
+
+    // ── DR C TUNA: LÍNEA AGE REVERSIST ────────────────────────
+    D('DR C TUNA Age Reversist Limpiador Exfoliante', 'DRC-AR-01', 159500, 'Age Reversist', '80ml · Antiedad'),
+    D('DR C TUNA Age Reversist Crema Hidratante',     'DRC-AR-02', 202500, 'Age Reversist', '30ml'),
+    D('DR C TUNA Age Reversist Suero',                'DRC-AR-03', 319500, 'Age Reversist', '30ml'),
+    D('DR C TUNA Age Reversist Contorno Ojos',        'DRC-AR-04', 159900, 'Age Reversist', '15ml'),
+    D('DR C TUNA Age Reversist Crema Noche',          'DRC-AR-05', 293000, 'Age Reversist', '50ml'),
+    D('DR C TUNA Age Reversist Tonico',               'DRC-AR-06', 170500, 'Age Reversist', '100ml'),
+    D('DR C TUNA Age Reversist Crema Perfeccionadora','DRC-AR-07', 319500, 'Age Reversist', '0.3ml x30'),
+    D('DR C TUNA Set Age Reversist (6 piezas)',       'DRC-AR-SET', 907520,'Age Reversist', 'Limpiador+Hidratante+Suero+Contorno+CremaNoche+Perfeccionadora'),
+
+    // ── DR C TUNA: LÍNEA LUMI RADIANCE ────────────────────────
+    D('DR C TUNA Lumi Radiance Limpiador',            'DRC-LR-01', 106500, 'Lumi Radiance', '100ml · Iluminar/manchas'),
+    D('DR C TUNA Lumi Radiance Crema Hidratante',     'DRC-LR-02', 187500, 'Lumi Radiance', '50ml'),
+    D('DR C TUNA Lumi Radiance Suero',                'DRC-LR-03', 198000, 'Lumi Radiance', '30ml'),
+    D('DR C TUNA Lumi Radiance Contorno Ojos',        'DRC-LR-04', 85200,  'Lumi Radiance', '20ml'),
+    D('DR C TUNA Lumi Radiance Tonico',               'DRC-LR-05', 120500, 'Lumi Radiance', '125ml'),
+    D('DR C TUNA Set Lumi Radiance (5 piezas)',       'DRC-LR-SET', 461760,'Lumi Radiance', 'Limpiador+Hidratante+Suero+Contorno'),
+
+    // ── DR C TUNA: LÍNEA RESURFACE ─────────────────────────────
+    D('DR C TUNA Resurface Limpiador',                'DRC-RS-01', 173500, 'Resurface', '100ml · Renueva textura'),
+    D('DR C TUNA Resurface Crema Día',                'DRC-RS-02', 319500, 'Resurface', '50ml'),
+    D('DR C TUNA Resurface Contorno Ojos',            'DRC-RS-03', 173500, 'Resurface', '15ml'),
+    D('DR C TUNA Resurface Suero Retinol',            'DRC-RS-04', 346000, 'Resurface', '30ml'),
+    D('DR C TUNA Resurface Tonico/Essence',           'DRC-RS-05', 198000, 'Resurface', '100ml'),
+    D('DR C TUNA Resurface Crema Noche',              'DRC-RS-06', 319500, 'Resurface', '50ml'),
+    D('DR C TUNA Set Resurface (4 piezas)',           'DRC-RS-SET', 810000,'Resurface', 'Limpiador+Suero+Contorno+CremaNoche'),
+
+    // ── DR C TUNA: PRODUCTOS ESPECIALES ───────────────────────
+    D('DR C TUNA Absolute Super Elixir',     'DRC-SE-01',  329000, 'Especiales', '25ml'),
+    D('DR C TUNA Jabón Calendula',           'DRC-JAB-01', 32000,  'Especiales', '125g'),
+    D('DR C TUNA Jabón Tea Tree',            'DRC-JAB-02', 32000,  'Especiales', '125g'),
+    D('DR C TUNA Balsamo Hidratante Manos',  'DRC-MAN-01', 21300,  'Especiales', 'Manos'),
+    D('DR C TUNA Crema Manos',               'DRC-MAN-02', 21300,  'Especiales', 'Manos'),
+    D('DR C TUNA Desodorante Mujer',         'DRC-DEO-01', 32000,  'Especiales', 'Roll-on'),
+    D('DR C TUNA Crema Dental',              'DRC-DEN-01', 64000,  'Especiales', '112g'),
+    D('DR C TUNA Exfoliante Flaunt It',      'DRC-EXF-01', 213000, 'Especiales', 'Cuerpo'),
+    D('DR C TUNA Gel Flaunt It',             'DRC-GEL-01', 159800, 'Especiales', 'Cuerpo'),
+    D('DR C TUNA Gel Paprika',               'DRC-GEL-02', 63900,  'Especiales', 'Masaje'),
+    D('DR C TUNA Gel Castaño de Indias',     'DRC-GEL-03', 63900,  'Especiales', 'Masaje'),
+    D('DR C TUNA Bloqueador Cuerpo SPF',     'DRC-BLQ-01', 136500, 'Especiales', 'Cuerpo'),
+    D('DR C TUNA Bloqueador Rostro SPF',     'DRC-BLQ-02', 91000,  'Especiales', 'Rostro'),
+    D('DR C TUNA Cera Peinar Hombre',        'DRC-CPH-01', 63900,  'Especiales', 'Cabello hombre'),
+
+    // ── DR C TUNA: LÍNEA CABELLO ───────────────────────────────
+    D('DR C TUNA Reviving Champú',           'DRC-CAB-01', 91500,  'Cabello', '225ml'),
+    D('DR C TUNA Reviving Mascarilla',       'DRC-CAB-02', 106500, 'Cabello', '200ml'),
+    D('DR C TUNA Reviving Aceite/Gotas',     'DRC-CAB-03', 133000, 'Cabello', '30ml'),
+    D('DR C TUNA Set Reviving (3 piezas)',   'DRC-CAB-SET', 264800,'Cabello', 'Champú+Mascarilla+Aceite'),
+    D('DR C TUNA Repair Champú',             'DRC-REP-01', 101200, 'Cabello', '225ml'),
+    D('DR C TUNA Repair Mascarilla',         'DRC-REP-02', 101200, 'Cabello', '125ml'),
+    D('DR C TUNA Repair Acondicionador',     'DRC-REP-03', 101200, 'Cabello', '200ml'),
+
+    // ── FARMASI: FRAGANCIAS HOMBRE ─────────────────────────────
+    F('His Power Eau de Parfum',             'FAR-FH-01', 186300, 'Fragancias', '100ml · Hombre'),
+    F('Baoli Aqua Eau de Parfum',            'FAR-FH-02', 159900, 'Fragancias', '90ml · Hombre'),
+    F('F70 Eau de Parfum Hombre',            'FAR-FH-03', 144900, 'Fragancias', 'Hombre'),
+
+    // ── FARMASI: FRAGANCIAS MUJER ──────────────────────────────
+    F('Her Aqua Eau de Parfum',              'FAR-FM-01', 138500, 'Fragancias', '65ml · Mujer'),
+    F('Sensational Eau de Parfum',           'FAR-FM-02', 133000, 'Fragancias', 'Mujer'),
+    F('Her Passion Eau de Parfum',           'FAR-FM-03', 186300, 'Fragancias', '60ml · Mujer'),
+
+    // ── SUPLEMENTOS: NUTRIPLUS ─────────────────────────────────
+    S('Té Serenety',                         'SUP-TE-01',  95900,  '1.7g x30 sobres'),
+    S('Café Achicoria',                      'SUP-CAF-01', 95900,  '100g'),
+    S('Café Fibra',                          'SUP-CAF-02', 95900,  '100g'),
+    S('Café Achicoria/Colágeno',             'SUP-CAF-03', 117100, '100g'),
+    S('Aloe Glow',                           'SUP-ALO-01', 130450, '450ml'),
+    S('Citrus Mineral',                      'SUP-CIT-01', 186400, 'Suplemento'),
+    S('Guarana Taurine',                     'SUP-GUA-01', 186250, 'Suplemento'),
+    S('Lily Shaker',                         'SUP-SHK-01', 63400,  '400ml'),
+    S('Gomitas Vinagoc',                     'SUP-GOM-01', 111500, 'Gummies'),
+
+  ].concat((() => {
+    const G = (name, id, originalPrice, discountPct, qty, category, presentation='') => {
+      const price = Math.round(originalPrice * (1 - discountPct/100));
+      const cost = Math.round(price * 0.34);
+      return { id, name, ref: id, price, originalPrice, discountPct, cost, margin: 66,
+        category, presentation, stock: qty, sold: 0, active: true };
+    };
+    return [
+        // ── MAC: BASE FLUIDA Studio Fix Fluid SPF15 ─────────────
+        G('MAC Studio Fix Fluid NW18',    'GLAM-MAC-NW18',  205000, 50, 3, 'GLAM MAC', '30ml · Base fluida'),
+        G('MAC Studio Fix Fluid NW20',    'GLAM-MAC-NW20',  205000, 50, 2, 'GLAM MAC', '30ml · Base fluida'),
+        G('MAC Studio Fix Fluid C4.5',    'GLAM-MAC-C45',   205000, 50, 4, 'GLAM MAC', '30ml · Base fluida'),
+
+        // ── MAC: POLVOS Studio Fix Powder Plus ──────────────────
+        G('MAC Studio Fix Powder NW35',   'GLAM-MAC-PNW35', 219900, 60, 3, 'GLAM MAC', '15g · Polvo compacto'),
+        G('MAC Studio Fix Powder C3.5',   'GLAM-MAC-PC35',  219900, 60, 3, 'GLAM MAC', '15g · Polvo compacto'),
+
+        // ── MAC: RUBORES Powder Blush ────────────────────────────
+        G('MAC Powder Blush Blushbaby',   'GLAM-MAC-BB',    159900, 60, 2, 'GLAM MAC', 'Rubor · Blushbaby'),
+        G('MAC Sheertone Blush Blushbaby','GLAM-MAC-SBB',   159900, 60, 1, 'GLAM MAC', 'Rubor · Blushbaby'),
+        G('MAC Powder Blush Mocha',       'GLAM-MAC-BM',    159900, 60, 1, 'GLAM MAC', 'Rubor · Mocha'),
+        G('MAC Sheertone Blush Fleur Power','GLAM-MAC-BFP', 159900, 60, 1, 'GLAM MAC', 'Rubor · Fleur Power'),
+
+        // ── MAC: ILUMINADOR Extra Dimension Skinfinish ──────────
+        G('MAC Extra Dimension Skinfinish', 'GLAM-MAC-EDS', 225000, 60, 2, 'GLAM MAC', '9g · Iluminador'),
+
+        // ── MAC: LABIALES Powder Kiss ────────────────────────────
+        G('MAC Powder Kiss Red Rock 640',    'GLAM-MAC-LRR', 135000, 60, 1, 'GLAM MAC', 'Labial matte · Red Rock'),
+        G('MAC Powder Kiss Style Shocked 303','GLAM-MAC-LSS',135000, 60, 2, 'GLAM MAC', 'Labial matte · Style Shocked'),
+        G('MAC Powder Kiss Sheer Outrage 928','GLAM-MAC-LSO',135000, 60, 2, 'GLAM MAC', 'Labial semimatte · Sheer Outrage'),
+        G('MAC Powder Kiss Devoted to Chili 316','GLAM-MAC-LDC',135000, 60, 1, 'GLAM MAC', 'Labial matte · Devoted to Chili'),
+
+        // ── MAC: LÁPIZ DE OJOS ───────────────────────────────────
+        G('MAC Eye Pencil Coffee',        'GLAM-MAC-EPC',   114900, 60, 2, 'GLAM MAC', 'Lápiz ojos · Coffee'),
+
+        // ── MAC: MÁSCARA ─────────────────────────────────────────
+        G('MAC Stack Mascara Mega Brush', 'GLAM-MAC-MST',   62000,  50, 1, 'GLAM MAC', '3ml · Lavable micro'),
+
+        // ── MAC: FIJADOR ─────────────────────────────────────────
+        G('MAC Fix+ Fijador de Maquillaje','GLAM-MAC-FIX',  55000,  40, 1, 'GLAM MAC', 'Spray fijador'),
+
+        // ── CLINIQUE: BASE Beyond Perfecting ────────────────────
+        G('Clinique Beyond Perfecting CN52 Neutral','GLAM-CLIN-BP52', 209900, 60, 1, 'GLAM Clinique', 'Base+corrector · CN52 Neutral'),
+        G('Clinique Beyond Perfecting CN70 Vanilla','GLAM-CLIN-BP70', 209900, 60, 4, 'GLAM Clinique', 'Base+corrector · CN70 Vanilla'),
+
+        // ── CLINIQUE: LÁPIZ OJOS Cream Shaper ───────────────────
+        G('Clinique Cream Shaper for Eyes Black Diamond','GLAM-CLIN-CS', 115000, 60, 3, 'GLAM Clinique', 'Lápiz cremoso · Black Diamond'),
+
+        // ── CLINIQUE: MÁSCARA ────────────────────────────────────
+        G('Clinique High Impact Mascara Black','GLAM-CLIN-MSC', 137000, 60, 1, 'GLAM Clinique', 'Máscara extensión visible'),
+
+        // ── CLINIQUE: OTROS ──────────────────────────────────────
+        G('Clinique Moisture Surge Face Spray','GLAM-CLIN-MS', 139900, 60, 1, 'GLAM Clinique', 'Bruma hidratante'),
+        G('Clinique Rinse-Off Eye Makeup Solvent','GLAM-CLIN-DM', 125000, 60, 1, 'GLAM Clinique', 'Desmaquillante ojos'),
+        G('Clinique Plumón Delineador Expresso','GLAM-CLIN-DEL', 126900, 40, 1, 'GLAM Clinique', 'Delineador líquido · Expresso'),
+
+        // ── ESTÉE LAUDER: LÁPIZ LABIOS ───────────────────────────
+        G('Estée Lauder Double Wear Lip Pencil Apple Cordial','GLAM-EL-LP', 151100, 60, 1, 'GLAM Estee Lauder', 'Lápiz labios · Apple Cordial'),
+
+        // ── FARMASI GLAM: Concealer ──────────────────────────────
+        G('Farmasi VFX Pro Liquid Concealer 04','GLAM-FAR-CON04', 49500, 50, 1, 'GLAM Farmasi', '6ml · Corrector líquido'),
+        G('Farmasi Eye Pencil Burgundy 09','GLAM-FAR-EP09', 41500, 50, 1, 'GLAM Farmasi', 'Lápiz ojos · Burgundy'),
+        G('Farmasi Matte Liquid Lipstick 08 Sunset Breeze','GLAM-FAR-LL08', 61800, 50, 1, 'GLAM Farmasi', '4ml · Sunset Breeze'),
+        G('Farmasi Pestañina ZEN Super Alargadora','GLAM-FAR-ZEN', 40000, 50, 1, 'GLAM Farmasi', 'Máscara alargadora'),
+        G('Farmasi Primer de Sombras',  'GLAM-FAR-PS', 50000, 50, 1, 'GLAM Farmasi', 'Base sombras'),
+    ];
+  })());
+}
+
+// ── AUTH ─────────────────────────────────────
+function toggleYamileForm(){const f=document.getElementById('yamile-auth');f.style.display=f.style.display==='none'?'block':'none';if(f.style.display==='block')setTimeout(()=>document.getElementById('yamile-email').focus(),100);}
+function loginYamile(){const e=document.getElementById('yamile-email').value.trim().toLowerCase();const err=document.getElementById('yamile-err');if(e==='yamicontento@gmail.com'){err.style.display='none';login('Yamile');}else{err.style.display='block';}}
+function login(user){
+  currentUser=user;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('user-badge').textContent=user;
+  // Show/hide Yamile-only UI
+  const glamMgnBadge=document.getElementById('glam-mgn-badge');
+  const glamMgnCol=document.getElementById('glam-mgn-col');
+  if(glamMgnBadge)glamMgnBadge.style.display=user==='Yamile'?'block':'none';
+  if(glamMgnCol)glamMgnCol.style.display=user==='Yamile'?'':'none';
+  // Load products from code (always fresh catalog)
+  const stored=lGet();
+  const initial=getInitialProducts();
+  const storedMap={};(stored.products||[]).forEach(p=>storedMap[p.id]=p);
+  products=initial.map(p=>storedMap[p.id]?{...p,...storedMap[p.id]}:p);
+  sales=stored.sales||[];
+  renderAll();
+  startListeners();
+}
+function logout(){currentUser=null;document.getElementById('login-screen').classList.remove('hidden');}
+function openModule(url){window.open(url,'_blank');}
+
+// ── FIREBASE LISTENERS ───────────────────────
+async function startListeners(){
+  // Products
+  const testProds=await fbList('products');
+  if(testProds===null){console.warn('Firebase offline - local mode');return;}
+  if(testProds.length===0){
+    showToast('Cargando catálogo en Firebase...');
+    for(const p of products)await fbSet('products',p.id,p);
+  }
+  // Poll products every POLL_MS
+  let lastPHash='';
+  const pollP=async()=>{const docs=await fbList('products');if(!docs)return;const h=docs.map(d=>d.id+d.stock+d.sold).join('|');if(h!==lastPHash){lastPHash=h;const sm={};(lGet().products||[]).forEach(p=>sm[p.id]=p);const fbMap={};docs.forEach(d=>fbMap[d.id]=d);// Merge: FB stock/sold into our local products
+    products=getInitialProducts().map(p=>{const fb=fbMap[p.id];const loc=sm[p.id];if(fb)return{...p,...fb};if(loc)return{...p,...loc};return p;});flashLive();if(currentUser)renderAll();}};
+  pollP();setInterval(pollP,POLL_MS);
+  // Poll sales
+  let lastSHash='';
+  const pollS=async()=>{const docs=await fbList('sales','timestamp','DESCENDING');if(!docs)return;const h=docs.map(d=>d.id).join('|');if(h!==lastSHash){lastSHash=h;sales=docs;const st=lGet();st.sales=sales;lSave(st);flashLive();if(currentUser)renderAll();}};
+  pollS();setInterval(pollS,POLL_MS);
+}
+function flashLive(){const e=document.getElementById('live-ind');e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500);}
+
+// ── TABS ─────────────────────────────────────
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  renderAll();
+}
+
+// ── UTILS ────────────────────────────────────
+function fmt(n){return'$'+Math.round(n).toLocaleString('es-CO');}
+function catClass(cat){
+  if(!cat)return'cat-far';
+  if(cat==='Farmasi Fragancias')return'cat-fra';
+  if(cat==='Farmasi Cuidado Personal')return'cat-per';
+  if(cat.startsWith('DR C TUNA'))return'cat-drc';
+  if(cat==='Suplementos')return'cat-sup';
+  if(cat==='GLAM MAC')return'cat-mac';
+  if(cat==='GLAM Clinique')return'cat-clin';
+  if(cat==='GLAM Estee Lauder')return'cat-el';
+  if(cat==='GLAM Farmasi')return'cat-farg';
+  return'cat-far';
+}
+function catLabel(cat){
+  const m={'Farmasi Maquillaje':'Maquillaje','Farmasi Fragancias':'Fragancias','Farmasi Cuidado Personal':'Cuidado P.','DR C TUNA':'DR C TUNA','Suplementos':'Supl.','GLAM MAC':'MAC','GLAM Clinique':'Clinique','GLAM Estee Lauder':'Est. Lauder','GLAM Farmasi':'Farm. GLAM'};
+  return m[cat]||cat;
+}
+function stockBadge(s){const c=s===0?'s-out':s<=1?'s-low':'s-ok';return`<span class="stock-b ${c}">${s}</span>`;}
+function filterProds(searchId,catId){
+  const q=(document.getElementById(searchId)?.value||'').toLowerCase();
+  const cat=document.getElementById(catId)?.value||'';
+  return products.filter(p=>{
+    if(!p.active)return false;
+    if(cat&&p.category!==cat)return false;
+    if(q&&!p.name.toLowerCase().includes(q)&&!(p.ref||'').includes(q))return false;
+    return true;
+  });
+}
+function isGlam(p){return p.category&&p.category.startsWith('GLAM');}
+
+// ── RENDER ALL ───────────────────────────────
+function renderAll(){renderKPIs();renderVentas();renderInventario();renderHistorial();renderResumen();renderGlam();renderAdmin();}
+
+// ── KPIs ─────────────────────────────────────
+function renderKPIs(){
+  const tv=sales.reduce((a,s)=>a+s.total,0);
+  const tc=sales.reduce((a,s)=>a+s.cost*s.qty,0);
+  const tm=tv-tc;
+  const mp=tv>0?(tm/tv*100).toFixed(1):'0';
+  const tu=sales.reduce((a,s)=>a+s.qty,0);
+  const sr=products.reduce((a,p)=>a+p.stock,0);
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value">${fmt(tv)}</div><div class="kpi-sub">${tu} uds · ${sales.length} ventas</div></div>
+    <div class="kpi"><div class="kpi-label">Margen Bruto</div><div class="kpi-value green">${fmt(tm)}</div><div class="kpi-sub">${mp}%</div></div>
+    <div class="kpi"><div class="kpi-label">Costo</div><div class="kpi-value" style="color:var(--muted)">${fmt(tc)}</div></div>
+    <div class="kpi"><div class="kpi-label">Stock Disp.</div><div class="kpi-value blue">${sr}</div></div>
+  `;}
+
+// ── VENTAS TABLE ─────────────────────────────
+function renderVentas(){
+  const prods=filterProds('sv-search','sv-cat');
+  const tb=document.getElementById('ventas-tbody');
+  if(!prods.length){tb.innerHTML='<tr><td colspan="5"><div class="empty">Sin productos</div></td></tr>';return;}
+  tb.innerHTML=prods.map(p=>{
+    const dis=p.stock===0?'disabled':'';
+    const priceDisplay=isGlam(p)&&p.originalPrice
+      ?`<span class="orig-price">${fmt(p.originalPrice)}</span>${fmt(p.price)}<span class="dcto-badge">-${p.discountPct||0}%</span>`
+      :fmt(p.price);
+    return`<tr>
+      <td><div class="p-name">${p.name}</div><div class="p-ref">${p.presentation||p.ref||''}</div></td>
+      <td><span class="cat-pill ${catClass(p.category)}">${catLabel(p.category)}</span></td>
+      <td class="price-c">${priceDisplay}</td>
+      <td>${stockBadge(p.stock)}</td>
+      <td><button class="btn btn-sell" onclick="openSell('${p.id}')" ${dis}>Vender</button></td>
+    </tr>`;
+  }).join('');}
+
+// ── INVENTARIO ───────────────────────────────
+function renderInventario(){
+  const prods=filterProds('inv-search','inv-cat');
+  const tb=document.getElementById('inv-tbody');
+  if(!prods.length){tb.innerHTML='<tr><td colspan="8"><div class="empty">Sin productos</div></td></tr>';return;}
+  tb.innerHTML=prods.map(p=>{
+    const mp=((p.price-p.cost)/p.price*100).toFixed(0);
+    return`<tr>
+      <td><div class="p-name">${p.name}</div><div class="p-ref">${p.ref||''}</div></td>
+      <td><span class="cat-pill ${catClass(p.category)}">${catLabel(p.category)}</span></td>
+      <td class="price-c">${fmt(p.price)}</td>
+      <td class="cost-c">${fmt(p.cost)}</td>
+      <td style="color:var(--green);font-size:12px;font-weight:600">${mp}%</td>
+      <td>${stockBadge(p.stock)}</td>
+      <td style="color:var(--muted);font-size:12px">${p.sold||0}</td>
+      <td><button class="btn btn-edit" onclick="openEdit('${p.id}')">Editar</button></td>
+    </tr>`;
+  }).join('');}
+
+// ── HISTORIAL ────────────────────────────────
+function renderHistorial(){
+  const div=document.getElementById('historial-list');
+  if(!sales.length){div.innerHTML='<div class="empty">Sin ventas aún</div>';return;}
+  div.innerHTML=[...sales].reverse().map(s=>{
+    const margen=(s.price-s.cost)*s.qty;
+    const dt=s.timestamp?.toDate?s.timestamp.toDate():new Date(s.timestamp);
+    const dtStr=dt.toLocaleDateString('es-CO',{day:'2-digit',month:'short'})+' '+dt.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+    const buyerInfo=s.buyer?(` · ${s.buyer}`+(s.cedula?' (CC '+s.cedula+')':'')):''
+    return`<div class="sale-row">
+      <div class="sale-top">
+        <div class="sale-product">${s.productName}</div>
+        <div class="sale-amount">${fmt(s.total)}</div>
+      </div>
+      <div class="sale-meta">${dtStr} · <strong>${s.user}</strong>${buyerInfo}${s.notes?' · '+s.notes:''}</div>
+      <div class="sale-bottom">
+        <span class="sale-margin-text">+${fmt(margen)} margen</span>
+        <button class="btn btn-danger" onclick="deleteSale('${s.id}')" style="padding:4px 8px;font-size:11px">✕ Eliminar</button>
+      </div>
+    </div>`;
+  }).join('');}
+
+// ── RESUMEN ──────────────────────────────────
+function setDate(d,btn){activeDateFilter=d;document.querySelectorAll('.df-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderResumen();}
+function getSales(){
+  if(activeDateFilter==='all')return sales;
+  return sales.filter(s=>{
+    const dt=s.timestamp?.toDate?s.timestamp.toDate():new Date(s.timestamp);
+    return dt.toISOString().slice(0,10)===activeDateFilter;
+  });}
+
+function renderResumen(){
+  const fs=getSales();
+  const tv=fs.reduce((a,s)=>a+s.total,0);
+  const tc=fs.reduce((a,s)=>a+s.cost*s.qty,0);
+  const tm=tv-tc;
+  const mp=tv>0?(tm/tv*100).toFixed(1):'0';
+  const tu=fs.reduce((a,s)=>a+s.qty,0);
+  const dLabel=activeDateFilter==='all'?'Evento completo':activeDateFilter==='2026-05-25'?'Lunes 25 mayo':activeDateFilter==='2026-05-26'?'Martes 26 mayo':'Miércoles 27 mayo';
+  document.getElementById('res-kpis').innerHTML=`
+    <div class="kpi" style="grid-column:1/-1;background:var(--primary-l);border-color:var(--primary-b)"><div class="kpi-label" style="color:var(--primary)">📅 ${dLabel}</div><div style="font-size:13px;font-weight:600;color:var(--primary)">${fs.length} transacciones · ${tu} unidades</div></div>
+    <div class="kpi"><div class="kpi-label">Ingresos</div><div class="kpi-value">${fmt(tv)}</div></div>
+    <div class="kpi"><div class="kpi-label">Margen Bruto</div><div class="kpi-value green">${fmt(tm)}</div><div class="kpi-sub">${mp}%</div></div>
+    <div class="kpi"><div class="kpi-label">Costo</div><div class="kpi-value" style="color:var(--muted)">${fmt(tc)}</div></div>
+  `;
+  // Farmasi vs GLAM split
+  const fSales=fs.filter(s=>!s.category?.startsWith('GLAM'));
+  const gSales=fs.filter(s=>s.category?.startsWith('GLAM'));
+  const fT=fSales.reduce((a,s)=>a+s.total,0),fM=fSales.reduce((a,s)=>a+(s.price-s.cost)*s.qty,0);
+  const gT=gSales.reduce((a,s)=>a+s.total,0),gM=gSales.reduce((a,s)=>a+(s.price-s.cost)*s.qty,0);
+  document.getElementById('res-split').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Farmasi + DR C TUNA + Suplementos</div><div class="kpi-value">${fmt(fT)}</div><div class="kpi-sub" style="color:var(--green)">Margen: ${fmt(fM)}</div></div>
+    <div class="kpi" style="border-color:var(--gold-b);background:var(--gold-bg)"><div class="kpi-label" style="color:var(--gold)">✨ GLAM by Yam</div><div class="kpi-value" style="color:var(--gold)">${fmt(gT)}</div><div class="kpi-sub" style="color:var(--green)">Margen: ${fmt(gM)}</div></div>
+  `;
+  // Por vendedora
+  const byU={};fs.forEach(s=>{if(!byU[s.user])byU[s.user]={v:0,i:0};byU[s.user].v+=s.qty;byU[s.user].i+=s.total;});
+  document.getElementById('res-usuarios').innerHTML=Object.entries(byU).map(([u,d])=>
+    `<tr><td><strong>${u}</strong></td><td>${d.v}</td><td class="price-c">${fmt(d.i)}</td></tr>`
+  ).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:12px">Sin ventas</td></tr>';
+  // Por cat
+  const byC={};fs.forEach(s=>{if(!byC[s.category])byC[s.category]={u:0,i:0,m:0};byC[s.category].u+=s.qty;byC[s.category].i+=s.total;byC[s.category].m+=(s.price-s.cost)*s.qty;});
+  document.getElementById('res-cats').innerHTML=Object.entries(byC).sort((a,b)=>b[1].i-a[1].i).map(([c,d])=>
+    `<tr><td><span class="cat-pill ${catClass(c)}">${catLabel(c)}</span></td><td>${d.u}</td><td class="price-c">${fmt(d.i)}</td><td style="color:var(--green);font-weight:600">${fmt(d.m)}</td></tr>`
+  ).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px">Sin ventas</td></tr>';
+  // Top
+  const byP={};fs.forEach(s=>{if(!byP[s.productId])byP[s.productId]={n:s.productName,u:0,i:0};byP[s.productId].u+=s.qty;byP[s.productId].i+=s.total;});
+  document.getElementById('res-top').innerHTML=Object.values(byP).sort((a,b)=>b.i-a.i).slice(0,8).map(d=>
+    `<tr><td class="p-name">${d.n}</td><td>${d.u}</td><td class="price-c">${fmt(d.i)}</td></tr>`
+  ).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:12px">Sin ventas</td></tr>';
+}
+
+// ── GLAM ─────────────────────────────────────
+function renderGlam(){
+  const isY=currentUser==='Yamile';
+  const mgn=document.getElementById('glam-mgn-badge');
+  const mgnCol=document.getElementById('glam-mgn-col');
+  if(mgn)mgn.style.display=isY?'block':'none';
+  if(mgnCol)mgnCol.style.display=isY?'':'none';
+  const q=(document.getElementById('glam-search')?.value||'').toLowerCase();
+  const cat=document.getElementById('glam-cat')?.value||'';
+  const glamProds=products.filter(p=>p.category?.startsWith('GLAM')&&p.active&&(!cat||p.category===cat)&&(!q||p.name.toLowerCase().includes(q)));
+  // GLAM KPIs
+  const gS=sales.filter(s=>s.category?.startsWith('GLAM'));
+  const gT=gS.reduce((a,s)=>a+s.total,0),gM=gS.reduce((a,s)=>a+(s.price-s.cost)*s.qty,0);
+  document.getElementById('glam-kpis').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Ventas GLAM</div><div class="kpi-value" style="color:var(--gold)">${fmt(gT)}</div><div class="kpi-sub">${gS.reduce((a,s)=>a+s.qty,0)} unidades</div></div>
+    <div class="kpi"><div class="kpi-label">Piezas disp.</div><div class="kpi-value blue">${glamProds.reduce((a,p)=>a+p.stock,0)}</div></div>
+    ${isY?`<div class="kpi"><div class="kpi-label">Margen GLAM</div><div class="kpi-value green">${fmt(gM)}</div></div>`:''}
+    <div class="kpi"><div class="kpi-label">Transacciones</div><div class="kpi-value teal">${gS.length}</div></div>
+  `;
+  const tb=document.getElementById('glam-tbody');
+  if(!glamProds.length){tb.innerHTML='<tr><td colspan="8"><div class="empty">Sin productos GLAM</div></td></tr>';return;}
+  tb.innerHTML=glamProds.map(p=>{
+    const m=p.price-p.cost,dis=p.stock===0?'disabled':'';
+    const mgnCell=isY?`<td style="color:var(--green);font-weight:600">${fmt(m)}</td>`:'';
+    return`<tr>
+      <td><div class="p-name">${p.name}</div><div class="p-ref">${p.presentation||''}</div></td>
+      <td><span class="cat-pill ${catClass(p.category)}">${catLabel(p.category)}</span></td>
+      <td class="cost-c"><span class="orig-price">${fmt(p.originalPrice||p.price)}</span></td>
+      <td class="price-c">${fmt(p.price)}</td>
+      <td><span class="dcto-badge">-${p.discountPct||0}%</span></td>
+      ${mgnCell}
+      <td>${stockBadge(p.stock)}</td>
+      <td><button class="btn btn-sell" onclick="openSell('${p.id}')" ${dis}>Vender</button></td>
+    </tr>`;
+  }).join('');}
+
+// ── ADMIN ─────────────────────────────────────
+function renderAdmin(){
+  const q=(document.getElementById('admin-search')?.value||'').toLowerCase();
+  const prods=products.filter(p=>!q||p.name.toLowerCase().includes(q)||(p.ref||'').includes(q));
+  const tb=document.getElementById('admin-tbody');
+  tb.innerHTML=prods.map(p=>{
+    const mp=((p.price-p.cost)/p.price*100).toFixed(0);
+    return`<tr>
+      <td><div class="p-name">${p.name}${!p.active?' <span style="color:var(--red);font-size:10px">(oculto)</span>':''}</div></td>
+      <td class="price-c">${fmt(p.price)}</td>
+      <td style="color:var(--green);font-size:12px;font-weight:600">${mp}%</td>
+      <td>${stockBadge(p.stock)}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-edit" onclick="openEdit('${p.id}')" style="margin-right:4px">Editar</button>
+        <button class="btn btn-danger" onclick="toggleActive('${p.id}')">${p.active?'Ocultar':'Activar'}</button>
+      </td>
+    </tr>`;
+  }).join('');}
+
+// ── SELL MODAL ────────────────────────────────
+function openSell(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  currentSellId=id;sellQty=1;
+  document.getElementById('sell-qty').textContent=1;
+  document.getElementById('sell-price').value=p.price;
+  document.getElementById('sell-buyer').value='';
+  document.getElementById('sell-cedula').value='';
+  document.getElementById('sell-notes').value='';
+  document.getElementById('sell-info').innerHTML=`
+    <div class="info-row"><strong>Producto</strong>${p.name}</div>
+    <div class="info-row"><strong>Stock</strong>${stockBadge(p.stock)}</div>
+    <div class="info-row"><strong>Precio</strong>${fmt(p.price)}${isGlam(p)&&p.originalPrice?` <span class="orig-price">(público: ${fmt(p.originalPrice)})</span>`:''}</div>
+  `;
+  updatePreview();
+  document.getElementById('modal-sell').classList.remove('hidden');
+}
+function changeQty(d){const p=products.find(x=>x.id===currentSellId);if(!p)return;sellQty=Math.max(1,Math.min(p.stock,sellQty+d));document.getElementById('sell-qty').textContent=sellQty;updatePreview();}
+function updatePreview(){
+  const p=products.find(x=>x.id===currentSellId);if(!p)return;
+  const price=parseFloat(document.getElementById('sell-price').value)||p.price;
+  const total=price*sellQty,margen=(price-p.cost)*sellQty,mp=((price-p.cost)/price*100).toFixed(1);
+  document.getElementById('sell-preview').innerHTML=`Total: ${fmt(total)} | Margen: ${fmt(margen)} (${mp}%) | Qty: ${sellQty}`;
+}
+async function confirmSale(){
+  const p=products.find(x=>x.id===currentSellId);
+  if(!p||p.stock<sellQty){showToast('Stock insuficiente',true);return;}
+  const price=parseFloat(document.getElementById('sell-price').value)||p.price;
+  const buyer=document.getElementById('sell-buyer').value.trim();
+  const cedula=document.getElementById('sell-cedula').value.trim();
+  const notes=document.getElementById('sell-notes').value.trim();
+  const saleData={productId:p.id,productName:p.name,category:p.category,price,cost:p.cost,qty:sellQty,total:price*sellQty,user:currentUser,buyer,cedula,notes,timestamp:new Date().toISOString()};
+  // Save locally first
+  const saleId=Date.now().toString();
+  const mp=products.find(x=>x.id===p.id);
+  if(mp){mp.stock-=sellQty;mp.sold=(mp.sold||0)+sellQty;}
+  sales.unshift({...saleData,id:saleId});
+  const st=lGet();
+  const lp=st.products?.find(x=>x.id===p.id);
+  if(lp){lp.stock-=sellQty;lp.sold=(lp.sold||0)+sellQty;}
+  st.sales=[...sales];lSave(st);
+  closeModal('modal-sell');
+  showToast('✓ Venta registrada · '+fmt(price*sellQty));
+  renderAll();
+  // Firebase background sync
+  try{await Promise.all([fbAdd('sales',{...saleData,localId:saleId}),fbUpdate('products',p.id,{stock:mp?mp.stock:p.stock-sellQty,sold:mp?mp.sold:(p.sold||0)+sellQty})]);}catch(e){console.warn('Firebase sync:',e.message);}
+}
+
+// ── EDIT ─────────────────────────────────────
+function openEdit(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  document.getElementById('edit-id').value=id;
+  document.getElementById('edit-name').value=p.name;
+  document.getElementById('edit-price').value=p.price;
+  document.getElementById('edit-margin').value=p.margin;
+  document.getElementById('edit-stock').value=p.stock;
+  document.getElementById('modal-edit').classList.remove('hidden');
+}
+async function saveEdit(){
+  const id=document.getElementById('edit-id').value;
+  const p=products.find(x=>x.id===id);if(!p)return;
+  p.name=document.getElementById('edit-name').value;
+  p.price=parseFloat(document.getElementById('edit-price').value)||p.price;
+  p.margin=parseFloat(document.getElementById('edit-margin').value)||p.margin;
+  p.cost=Math.round(p.price*(1-p.margin/100));
+  p.stock=parseInt(document.getElementById('edit-stock').value)||0;
+  const st=lGet();const lp=st.products?.find(x=>x.id===id);
+  if(lp)Object.assign(lp,{name:p.name,price:p.price,margin:p.margin,cost:p.cost,stock:p.stock});
+  lSave(st);closeModal('modal-edit');showToast('✓ Guardado');renderAll();
+  try{await fbUpdate('products',id,{name:p.name,price:p.price,margin:p.margin,cost:p.cost,stock:p.stock});}catch(e){}
+}
+
+// ── ADD PRODUCT ───────────────────────────────
+function autoMargin(){const cat=document.getElementById('new-cat').value;document.getElementById('new-margin').value=cat==='DR C TUNA'?50:30;updateMarginPreview();}
+function updateMarginPreview(){
+  const price=parseFloat(document.getElementById('new-price').value)||0;
+  const margin=parseFloat(document.getElementById('new-margin').value)||30;
+  const cost=Math.round(price*(1-margin/100));
+  document.getElementById('margin-prev').innerHTML=price?`Costo: ${fmt(cost)} | Margen por unidad: ${fmt(price-cost)} (${margin}%)`:'Ingresa precio para ver el margen';
+}
+async function addProduct(){
+  const name=document.getElementById('new-name').value.trim();
+  const price=parseFloat(document.getElementById('new-price').value);
+  if(!name||!price){showToast('Nombre y precio son obligatorios',true);return;}
+  const ref=document.getElementById('new-ref').value.trim();
+  const cat=document.getElementById('new-cat').value;
+  const margin=parseFloat(document.getElementById('new-margin').value)||30;
+  const stock=parseInt(document.getElementById('new-stock').value)||2;
+  const pres=document.getElementById('new-pres').value.trim();
+  const id=ref||'CUSTOM-'+Date.now().toString(36);
+  const prod={id,name,ref,price,margin,cost:Math.round(price*(1-margin/100)),category:cat,presentation:pres,stock,sold:0,active:true};
+  products.push(prod);
+  const st=lGet();st.products=[...products];lSave(st);
+  ['new-name','new-ref','new-price','new-pres'].forEach(i=>{if(document.getElementById(i))document.getElementById(i).value='';});
+  document.getElementById('new-stock').value=2;document.getElementById('new-margin').value=30;
+  showToast('✓ Producto "'+name+'" agregado');renderAll();
+  try{await fbSet('products',id,prod);}catch(e){}
+}
+
+// ── TOGGLE ACTIVE ─────────────────────────────
+async function toggleActive(id){
+  const p=products.find(x=>x.id===id);if(!p)return;
+  p.active=!p.active;
+  const st=lGet();const lp=st.products?.find(x=>x.id===id);if(lp)lp.active=p.active;lSave(st);
+  showToast(p.active?'✓ Producto activado':'Producto ocultado');renderAll();
+  try{await fbUpdate('products',id,{active:p.active});}catch(e){}
+}
+
+// ── DELETE SALE ───────────────────────────────
+async function deleteSale(saleId){
+  if(!confirm('¿Eliminar esta venta? Se restaura el stock.'))return;
+  const s=sales.find(x=>x.id===saleId);if(!s)return;
+  const p=products.find(x=>x.id===s.productId);
+  if(p){p.stock+=s.qty;p.sold=Math.max(0,(p.sold||0)-s.qty);}
+  sales=sales.filter(x=>x.id!==saleId);
+  const st=lGet();st.sales=sales;const lp=st.products?.find(x=>x.id===s.productId);
+  if(lp){lp.stock+=s.qty;lp.sold=Math.max(0,(lp.sold||0)-s.qty);}lSave(st);
+  showToast('Venta eliminada');renderAll();
+  try{await Promise.all([fbDelete('sales',saleId),fbUpdate('products',s.productId,{stock:p?p.stock:0,sold:p?p.sold:0})]);}catch(e){}
+}
+
+// ── EXPORT CSV (Excel-ready) ──────────────────
+function exportCSV(){
+  const BOM='\uFEFF';
+  const rows=[['Fecha','Hora','Vendedora','Comprador','Cedula','Producto','Categoria','Qty','Precio','Costo','Total','Margen','Notas']];
+  [...sales].reverse().forEach(s=>{
+    const dt=s.timestamp?.toDate?s.timestamp.toDate():new Date(s.timestamp);
+    rows.push([dt.toLocaleDateString('es-CO',{day:'2-digit',month:'2-digit',year:'numeric'}),dt.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}),s.user||'',s.buyer||'',s.cedula||'',s.productName,s.category,s.qty,s.price,s.cost,s.total,(s.price-s.cost)*s.qty,s.notes||'']);
+  });
+  const csv=BOM+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='ventas-evento-MY-'+new Date().toLocaleDateString('es-CO').replace(/\//g,'-')+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);
+}
+
+// ── MODALS ────────────────────────────────────
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.add('hidden');}));
+
+// ── TOAST ─────────────────────────────────────
+function showToast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3500);}
+
+// ── INIT ──────────────────────────────────────
+function updateTime(){const now=new Date();const s=now.toLocaleDateString('es-CO',{day:'2-digit',month:'short'})+' · '+now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});document.getElementById('user-badge').textContent=currentUser?(currentUser+' · '+now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})):currentUser||'—';}
+setInterval(updateTime,60000);
+</script>
+</body>
+</html>

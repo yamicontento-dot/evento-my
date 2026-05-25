@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ruleta Farmasi · Evento M&Y</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: #fff8f2;
+  color: #1a1a1a;
+  overflow-x: hidden;
+}
+
+/* TOP BANNER */
+.top-banner {
+  background: #1a1a1a;
+  padding: 12px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.banner-brand {
+  font-family: 'Playfair Display', serif;
+  font-size: 20px; color: #fff; letter-spacing: 1px;
+}
+.banner-brand span { color: #f5c842; }
+.banner-sub { font-size: 11px; color: rgba(255,255,255,.5); letter-spacing: 2px; text-transform: uppercase; }
+.banner-contact { text-align: right; }
+.banner-contact a { color: #f5c842; font-size: 11px; text-decoration: none; display: block; line-height: 1.8; }
+
+/* HERO SECTION */
+.hero {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee0979 50%, #9b59b6 100%);
+  padding: 28px 20px 32px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '🎊 🎉 ✨ 🎊 🎉 ✨ 🎊 🎉 ✨ 🎊';
+  position: absolute; top: 8px; left: 0; right: 0;
+  font-size: 16px; opacity: .25; white-space: nowrap;
+  animation: ticker 12s linear infinite;
+}
+@keyframes ticker { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+
+.hero-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 42px; color: #fff;
+  line-height: 1; margin-bottom: 6px;
+  text-shadow: 0 2px 10px rgba(0,0,0,.3);
+}
+.hero-sub { font-size: 14px; color: rgba(255,255,255,.85); font-weight: 600; letter-spacing: 1px; }
+
+/* MAIN */
+main { max-width: 480px; margin: 0 auto; padding: 20px 16px 60px; }
+
+/* PLAYER CARD */
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+  border: 1px solid #f0e8e0;
+}
+
+.card-title {
+  font-size: 13px; font-weight: 800; letter-spacing: 1px;
+  text-transform: uppercase; color: #888; margin-bottom: 10px;
+}
+
+.player-row { display: flex; gap: 8px; }
+.player-input {
+  flex: 1; padding: 11px 14px;
+  border: 2px solid #f0e8e0; border-radius: 10px;
+  font-size: 15px; font-family: 'Nunito', sans-serif;
+  font-weight: 600; color: #1a1a1a; outline: none;
+  transition: border-color .2s;
+}
+.player-input:focus { border-color: #ee0979; }
+.player-btn {
+  padding: 11px 18px; border-radius: 10px;
+  background: #1a1a1a; color: #fff;
+  border: none; font-size: 14px; font-weight: 800;
+  cursor: pointer; transition: background .2s;
+  font-family: 'Nunito', sans-serif;
+  white-space: nowrap;
+}
+.player-btn:hover { background: #ee0979; }
+
+.player-greeting {
+  display: none; margin-top: 10px;
+  background: #f0fff4; border: 1.5px solid #68d391;
+  border-radius: 10px; padding: 10px 14px;
+  font-size: 14px; font-weight: 700; color: #276749;
+}
+
+/* QUESTION CARD */
+.q-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: #ee0979; margin-bottom: 8px;
+}
+.q-text {
+  font-size: 16px; font-weight: 800; color: #1a1a1a;
+  line-height: 1.4; margin-bottom: 14px;
+}
+
+.q-options { display: flex; flex-direction: column; gap: 8px; }
+
+.q-opt {
+  padding: 12px 14px; border-radius: 10px;
+  border: 2px solid #f0e8e0;
+  background: #fff; cursor: pointer;
+  font-size: 14px; font-weight: 700; color: #1a1a1a;
+  display: flex; align-items: center; gap: 10px;
+  transition: all .15s; text-align: left;
+  font-family: 'Nunito', sans-serif;
+}
+.q-opt:hover { border-color: #ee0979; background: #fff5f8; }
+.q-opt.correct { border-color: #38a169; background: #f0fff4; color: #276749; }
+.q-opt.wrong { border-color: #e53e3e; background: #fff5f5; color: #c53030; }
+.q-opt:disabled { cursor: not-allowed; }
+
+.answer-banner {
+  display: none; margin-top: 12px;
+  padding: 12px 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 700; line-height: 1.5;
+}
+.answer-banner.ok { background: #f0fff4; border: 2px solid #68d391; color: #276749; display: block; }
+.answer-banner.bad { background: #fff5f5; border: 2px solid #fc8181; color: #c53030; display: block; }
+.answer-banner.go { background: #fffbeb; border: 2px solid #f6e05e; color: #744210; display: block; }
+
+.skip-link {
+  text-align: center; margin-top: 10px;
+}
+.skip-link button {
+  background: none; border: none; color: #aaa;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  text-decoration: underline; font-family: 'Nunito', sans-serif;
+}
+.skip-link button:hover { color: #888; }
+
+/* WHEEL CARD */
+.wheel-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 20px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.1);
+  border: 1px solid #f0e8e0;
+  text-align: center;
+}
+
+.wheel-wrap {
+  position: relative;
+  width: 320px; height: 320px;
+  margin: 0 auto 16px;
+}
+
+.wheel-arrow {
+  position: absolute;
+  top: -4px; left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 30px solid #1a1a1a;
+  z-index: 10;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.3));
+}
+
+canvas#rwheel {
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 4px #fff,
+    0 0 0 8px #1a1a1a,
+    0 8px 32px rgba(0,0,0,.2);
+  display: block;
+}
+
+.spin-btn {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, #ee0979, #ff6b6b);
+  border: none; border-radius: 14px;
+  color: #fff; font-size: 18px; font-weight: 900;
+  cursor: pointer; letter-spacing: 1px;
+  font-family: 'Nunito', sans-serif;
+  box-shadow: 0 4px 16px rgba(238,9,121,.3);
+  transition: all .2s;
+}
+.spin-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(238,9,121,.4);
+}
+.spin-btn:disabled {
+  background: #ccc; box-shadow: none;
+  cursor: not-allowed; transform: none;
+}
+
+/* STATS ROW */
+.stats-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.stat {
+  flex: 1; background: #fff; border: 1px solid #f0e8e0;
+  border-radius: 12px; padding: 12px 8px; text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+}
+.stat-val { font-size: 28px; font-weight: 900; color: #ee0979; line-height: 1; }
+.stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin-top: 3px; }
+
+/* SCOREBOARD */
+.score-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  background: #fff8f2; border-radius: 10px;
+  margin-bottom: 7px;
+  border: 1px solid #f0e8e0;
+}
+.score-rank { font-size: 18px; flex-shrink: 0; }
+.score-name { flex: 1; font-weight: 800; font-size: 14px; }
+.score-prize { font-size: 12px; font-weight: 700; color: #ee0979; }
+.score-empty { text-align: center; color: #ccc; font-size: 14px; padding: 20px 0; font-weight: 700; }
+
+/* PRIZE MODAL */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 100; display: none;
+  align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+@media(min-width:500px){ .modal-bg { align-items: center; } }
+.modal-bg.show { display: flex; }
+
+.prize-modal {
+  background: #fff;
+  border-radius: 24px 24px 0 0;
+  padding: 28px 24px 36px;
+  width: 100%; max-width: 440px;
+  text-align: center;
+  animation: slideUp .35s cubic-bezier(.34,1.56,.64,1);
+  position: relative;
+}
+@media(min-width:500px){
+  .prize-modal { border-radius: 24px; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(40px) scale(.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-drag { width: 40px; height: 4px; background: #e8e8e8; border-radius: 2px; margin: 0 auto 20px; }
+
+.prize-emoji { font-size: 56px; margin-bottom: 10px; display: block; }
+.prize-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #aaa; margin-bottom: 6px; }
+.prize-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 30px; color: #1a1a1a;
+  margin-bottom: 8px; line-height: 1.1;
+}
+.prize-name.gold { color: #d4a017; }
+.prize-name.noluck { color: #888; }
+.prize-desc { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 18px; font-weight: 600; }
+
+.prize-code-box {
+  background: #fff8f2; border: 2px dashed #f6ad55;
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 20px;
+  font-size: 16px; font-weight: 900; letter-spacing: 2px; color: #c05621;
+}
+
+.modal-cta {
+  width: 100%; padding: 14px;
+  border-radius: 12px; border: none;
+  font-size: 15px; font-weight: 900; cursor: pointer;
+  font-family: 'Nunito', sans-serif; transition: all .2s;
+  margin-bottom: 8px;
+}
+.modal-cta.win { background: #1a1a1a; color: #fff; }
+.modal-cta.win:hover { background: #ee0979; }
+.modal-cta.luck { background: #f7f7f7; color: #888; }
+.modal-cta.luck:hover { background: #eee; color: #555; }
+.modal-close-btn {
+  width: 100%; padding: 12px;
+  background: none; border: 2px solid #f0e8e0;
+  border-radius: 12px; color: #aaa; font-size: 14px;
+  font-weight: 700; cursor: pointer; font-family: 'Nunito', sans-serif;
+}
+.modal-close-btn:hover { border-color: #ccc; color: #888; }
+
+/* CONTACT FOOTER */
+.contact-footer {
+  background: #1a1a1a; border-radius: 16px;
+  padding: 20px; text-align: center; margin-bottom: 16px;
+}
+.contact-footer-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 18px; color: #fff; margin-bottom: 4px;
+}
+.contact-footer-sub { font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 14px; }
+.contact-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.contact-btn {
+  background: #f5c842; color: #1a1a1a;
+  padding: 10px 16px; border-radius: 8px;
+  text-decoration: none; font-size: 13px;
+  font-weight: 800; transition: opacity .2s;
+}
+.contact-btn:hover { opacity: .85; }
+.contact-btn.outline {
+  background: rgba(255,255,255,.1); color: #fff;
+}
+
+/* TOAST */
+#toast {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: #1a1a1a; color: #fff;
+  padding: 12px 22px; border-radius: 50px;
+  font-size: 14px; font-weight: 700;
+  z-index: 9999; opacity: 0; transition: all .3s;
+  pointer-events: none; white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,.2);
+}
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- TOP BANNER -->
+<div class="top-banner">
+  <div>
+    <div class="banner-brand">Farm<span>asi</span> × M&amp;Y</div>
+    <div class="banner-sub">Evento Mayo 25–27</div>
+  </div>
+  <div class="banner-contact">
+    <a href="tel:3108051223">📲 Yamile · 310 805 1223</a>
+    <a href="tel:3212002456">📲 Milena · 321 200 2456</a>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-title">🎰 Gira &amp; Gana</div>
+  <div class="hero-sub">Responde · Gira · ¡Llévate tu premio!</div>
+</div>
+
+<main>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat"><div class="stat-val" id="stat-spins">0</div><div class="stat-lbl">Giros</div></div>
+    <div class="stat"><div class="stat-val" id="stat-wins">0</div><div class="stat-lbl">Ganadoras</div></div>
+    <div class="stat"><div class="stat-val" id="stat-correct">0</div><div class="stat-lbl">Correctas</div></div>
+  </div>
+
+  <!-- PLAYER -->
+  <div class="card">
+    <div class="card-title">👤 ¿Quién participa?</div>
+    <div class="player-row">
+      <input class="player-input" id="player-name" placeholder="Tu nombre" maxlength="20"
+        onkeydown="if(event.key==='Enter')setPlayer()">
+      <button class="player-btn" onclick="setPlayer()">¡Listo!</button>
+    </div>
+    <div class="player-greeting" id="player-greeting"></div>
+  </div>
+
+  <!-- QUESTION -->
+  <div class="card" id="question-card">
+    <div class="q-label">🎯 Pregunta para girar</div>
+    <div class="q-text" id="q-text">Ingresa tu nombre para comenzar</div>
+    <div class="q-options" id="q-options"></div>
+    <div class="answer-banner" id="answer-banner"></div>
+    <div class="skip-link"><button onclick="skipQ()">Saltar pregunta →</button></div>
+  </div>
+
+  <!-- WHEEL -->
+  <div class="wheel-card">
+    <div class="wheel-wrap">
+      <div class="wheel-arrow"></div>
+      <canvas id="rwheel" width="320" height="320"></canvas>
+    </div>
+    <button class="spin-btn" id="spin-btn" disabled onclick="doSpin()">
+      🎰 ¡GIRAR!
+    </button>
+  </div>
+
+  <!-- SCOREBOARD -->
+  <div class="card">
+    <div class="card-title">🏆 Ganadoras del evento</div>
+    <div id="score-list"><div class="score-empty">Aún no hay ganadoras · ¡Sé la primera!</div></div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="contact-footer">
+    <div class="contact-footer-title">¿Lista para comprar?</div>
+    <div class="contact-footer-sub">Contáctanos y te asesoramos ahora mismo</div>
+    <div class="contact-btns">
+      <a href="https://wa.me/573108051223" class="contact-btn">💬 Yamile</a>
+      <a href="https://wa.me/573212002456" class="contact-btn outline">💬 Milena</a>
+    </div>
+  </div>
+
+</main>
+
+<!-- PRIZE MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="prize-modal">
+    <div class="modal-drag"></div>
+    <span class="prize-emoji" id="m-emoji">🎉</span>
+    <div class="prize-eyebrow" id="m-eyebrow">¡Felicitaciones!</div>
+    <div class="prize-name" id="m-name">Premio</div>
+    <div class="prize-desc" id="m-desc">Descripción</div>
+    <div class="prize-code-box" id="m-code">CÓDIGO</div>
+    <button class="modal-cta win" id="m-cta" onclick="claimPrize()">🎁 Reclamar premio</button>
+    <button class="modal-close-btn" onclick="nextPlayer()">Siguiente participante →</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── PRIZES (8 sectores) ──────────────────────
+const PRIZES = [
+  { label: '10%\nDR C TUNA',  short: '10% DR C TUNA',  desc: '10% de descuento en cualquier producto DR C TUNA',           code: 'DRC10',      emoji: '🌿', bg: '#ffd166', fg: '#1a1a1a', weight: 18 },
+  { label: '¡CLASE\nGRUPAL!', short: '¡CLASE GRUPAL!', desc: 'Inscripción gratis a nuestra clase grupal de cuidado de la piel y maquillaje', code: 'CLASE-MY25', emoji: '🎓', bg: '#06d6a0', fg: '#1a1a1a', weight: 22 },
+  { label: '10%\nMAQUILLAJE', short: '10% Maquillaje', desc: '10% de descuento en maquillaje Farmasi',                     code: 'MAKEUP10',   emoji: '💄', bg: '#ff6b9d', fg: '#fff',   weight: 16 },
+  { label: '20%\nDR C TUNA',  short: '20% DR C TUNA',  desc: '20% de descuento en cualquier línea DR C TUNA',              code: 'DRC20',      emoji: '✨', bg: '#a855f7', fg: '#fff',   weight: 12 },
+  { label: 'MUESTRA\nGRATIS', short: 'Muestra Gratis', desc: 'Muestra gratis de la línea skincare que elijas',             code: 'MUESTRA-MY', emoji: '🎁', bg: '#3b82f6', fg: '#fff',   weight: 16 },
+  { label: '10%\nFRAGANCIAS', short: '10% Fragancias', desc: '10% de descuento en fragancias Farmasi',                     code: 'FRAG10',     emoji: '🌸', bg: '#f97316', fg: '#fff',   weight: 14 },
+  { label: 'LABIAL\nGRATIS',  short: 'Labial Gratis',  desc: 'Labial Farmasi de tu elección',                              code: 'LABIAL-FREE',emoji: '💋', bg: '#ef4444', fg: '#fff',   weight: 10 },
+  { label: '¡PRÓXIMA\nVEZ!',  short: '¡Próxima vez!', desc: '¡La suerte te espera! Muéstrale esto a Yamile o Milena para tu regalo sorpresa 😊', code: 'SUERTE-MY', emoji: '🍀', bg: '#94a3b8', fg: '#fff', weight: 10 },
+];
+
+// ── QUESTIONS ────────────────────────────────
+const QUESTIONS = [
+  { text: '¿De qué país es originaria Farmasi?',
+    opts: [{e:'🇹🇷',t:'Turquía',ok:true},{e:'🇺🇸',t:'Estados Unidos',ok:false},{e:'🇫🇷',t:'Francia',ok:false},{e:'🇰🇷',t:'Corea',ok:false}],
+    fact: '¡Correcto! Farmasi nació en Turquía en 1950 y hoy está en +100 países.' },
+  { text: '¿Qué línea DR C TUNA es ideal para manchas y opacidad?',
+    opts: [{e:'💧',t:'Aqua',ok:false},{e:'☀️',t:'Lumi Radiance',ok:true},{e:'🌿',t:'Calendula',ok:false},{e:'⏳',t:'Age Reversist',ok:false}],
+    fact: '¡Exacto! Lumi Radiance está formulada para iluminar y reducir manchas.' },
+  { text: '¿Para qué tipo de piel es la línea Calendula?',
+    opts: [{e:'🔬',t:'Piel grasa',ok:false},{e:'⏳',t:'Piel madura',ok:false},{e:'🌸',t:'Piel sensible/irritada',ok:true},{e:'💦',t:'Piel deshidratada',ok:false}],
+    fact: '¡Bien! Calendula calma y repara pieles sensibles e irritadas.' },
+  { text: '¿Qué producto Farmasi fija el maquillaje todo el día?',
+    opts: [{e:'🌟',t:'Illuminating Primer',ok:false},{e:'🧴',t:'VFX Time Locker Spray',ok:true},{e:'💧',t:'Lip Plumper',ok:false},{e:'💄',t:'BB Powder',ok:false}],
+    fact: '¡Correcto! El Time Locker Fixing Spray es el aliado del maquillaje duradero.' },
+  { text: '¿Qué línea DR C TUNA tiene sérum de Retinol?',
+    opts: [{e:'🌿',t:'Tea Tree',ok:false},{e:'💧',t:'Aqua',ok:false},{e:'✨',t:'Resurface',ok:true},{e:'☀️',t:'Lumi Radiance',ok:false}],
+    fact: '¡Súper! Resurface Retinol Reviving Serum es el tratamiento antiedad más potente.' },
+  { text: '¿Cuántos años tiene Farmasi en el mercado?',
+    opts: [{e:'📅',t:'Más de 70 años',ok:true},{e:'📅',t:'Menos de 10 años',ok:false},{e:'📅',t:'30 años',ok:false},{e:'📅',t:'50 años',ok:false}],
+    fact: '¡Increíble! Fundada en 1950, Farmasi tiene más de 70 años de trayectoria.' },
+  { text: '¿Qué ingrediente estrella tiene Tea Tree de DR C TUNA?',
+    opts: [{e:'🌼',t:'Caléndula',ok:false},{e:'🌲',t:'Árbol de Té',ok:true},{e:'🥑',t:'Aguacate',ok:false},{e:'🌹',t:'Rosa',ok:false}],
+    fact: '¡Correcto! El árbol de té tiene propiedades antibacterianas y seborreguladoras.' },
+  { text: '¿Qué línea DR C TUNA hidrata pieles deshidratadas?',
+    opts: [{e:'🌸',t:'Lumi Radiance',ok:false},{e:'⏳',t:'Age Reversist',ok:false},{e:'💧',t:'Aqua',ok:true},{e:'🌿',t:'Calendula',ok:false}],
+    fact: '¡Muy bien! La línea Aqua está diseñada para restaurar la hidratación profunda.' },
+];
+
+// ── STATE ────────────────────────────────────
+let player = '', spinReady = false, spinning = false;
+let angle = 0, totalSpins = 0, totalWins = 0, totalCorrect = 0;
+let winners = [], usedQ = new Set(), currentQ = null;
+
+// ── CANVAS SETUP ─────────────────────────────
+const canvas = document.getElementById('rwheel');
+const ctx = canvas.getContext('2d');
+const CX = 160, CY = 160, R = 152;
+const N = PRIZES.length;
+
+function drawWheel(rot = 0) {
+  ctx.clearRect(0, 0, 320, 320);
+  const sliceA = (2 * Math.PI) / N;
+
+  PRIZES.forEach((p, i) => {
+    const s = rot + i * sliceA;
+    const e = s + sliceA;
+    const mid = s + sliceA / 2;
+
+    // Slice
+    ctx.beginPath();
+    ctx.moveTo(CX, CY);
+    ctx.arc(CX, CY, R, s, e);
+    ctx.closePath();
+    ctx.fillStyle = p.bg;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Text rendering
+    ctx.save();
+    ctx.translate(CX, CY);
+    ctx.rotate(mid);
+
+    // Text color
+    ctx.fillStyle = p.fg;
+
+    // Two-line label
+    const lines = p.label.split('\n');
+    const textX = R * 0.62; // distance from center along slice axis
+
+    ctx.font = 'bold 11px Nunito, Arial, sans-serif';
+    ctx.textAlign = 'center';
+
+    // Text shadow for readability
+    ctx.shadowColor = p.fg === '#fff' ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.3)';
+    ctx.shadowBlur = 3;
+
+    if (lines.length === 2) {
+      ctx.fillText(lines[0], textX, -6);
+      ctx.fillText(lines[1], textX, 8);
+    } else {
+      ctx.fillText(lines[0], textX, 4);
+    }
+
+    ctx.shadowBlur = 0;
+
+    // Emoji near inner edge
+    ctx.font = '15px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.emoji, R * 0.28, 6);
+
+    ctx.restore();
+  });
+
+  // Outer border ring
+  ctx.beginPath();
+  ctx.arc(CX, CY, R, 0, 2 * Math.PI);
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  // Inner separator ring
+  ctx.beginPath();
+  ctx.arc(CX, CY, R * 0.44, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Center hub
+  ctx.beginPath();
+  ctx.arc(CX, CY, 26, 0, 2 * Math.PI);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Center icon
+  ctx.font = '16px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🎰', CX, CY + 6);
+}
+
+drawWheel();
+
+// ── PLAYER ───────────────────────────────────
+function setPlayer() {
+  const n = document.getElementById('player-name').value.trim();
+  if (!n) { toast('Ingresa tu nombre 😊'); return; }
+  player = n;
+  const g = document.getElementById('player-greeting');
+  g.style.display = 'block';
+  g.innerHTML = `¡Hola <strong>${n}</strong>! 🎯 Responde para girar la ruleta`;
+  spinReady = false;
+  document.getElementById('spin-btn').disabled = true;
+  loadQ();
+  toast(`¡Bienvenida ${n}! 🌟`);
+}
+
+// ── QUESTIONS ────────────────────────────────
+function loadQ() {
+  if (!player) return;
+  const avail = QUESTIONS.map((q,i)=>i).filter(i=>!usedQ.has(i));
+  if (!avail.length) usedQ.clear();
+  const pool = avail.length ? avail : QUESTIONS.map((_,i)=>i);
+  const idx = pool[Math.floor(Math.random() * pool.length)];
+  usedQ.add(idx);
+  currentQ = QUESTIONS[idx];
+
+  document.getElementById('q-text').textContent = currentQ.text;
+  document.getElementById('answer-banner').className = 'answer-banner';
+  document.getElementById('answer-banner').textContent = '';
+
+  document.getElementById('q-options').innerHTML = currentQ.opts.map((o,i) => `
+    <button class="q-opt" id="qopt-${i}" onclick="answerQ(${i})">
+      <span>${o.e}</span> ${o.t}
+    </button>
+  `).join('');
+}
+
+function answerQ(i) {
+  if (!player) { toast('Ingresa tu nombre primero'); return; }
+  const opt = currentQ.opts[i];
+  document.querySelectorAll('.q-opt').forEach(b => b.disabled = true);
+  document.getElementById(`qopt-${i}`).classList.add(opt.ok ? 'correct' : 'wrong');
+  if (!opt.ok) {
+    const correctI = currentQ.opts.findIndex(o => o.ok);
+    document.getElementById(`qopt-${correctI}`).classList.add('correct');
+  }
+
+  const banner = document.getElementById('answer-banner');
+  if (opt.ok) {
+    banner.textContent = `✅ ${currentQ.fact}`;
+    banner.className = 'answer-banner ok';
+    totalCorrect++;
+    document.getElementById('stat-correct').textContent = totalCorrect;
+    setTimeout(() => {
+      banner.textContent = '🎰 ¡Respuesta correcta! ¡YA PUEDES GIRAR!';
+      banner.className = 'answer-banner go';
+      enableSpin();
+    }, 1600);
+  } else {
+    banner.textContent = `❌ La respuesta era: ${currentQ.opts.find(o=>o.ok).t}`;
+    banner.className = 'answer-banner bad';
+    setTimeout(() => {
+      banner.textContent = '🎰 ¡Igual tienes tu giro! La ruleta no discrimina 😄';
+      banner.className = 'answer-banner go';
+      enableSpin();
+    }, 1600);
+  }
+}
+
+function skipQ() {
+  if (!player) { toast('Ingresa tu nombre primero'); return; }
+  document.getElementById('answer-banner').textContent = '⏭ Pregunta saltada — ¡igual giras!';
+  document.getElementById('answer-banner').className = 'answer-banner go';
+  enableSpin();
+}
+
+function enableSpin() {
+  spinReady = true;
+  document.getElementById('spin-btn').disabled = false;
+}
+
+// ── SPIN ─────────────────────────────────────
+function doSpin() {
+  if (!spinReady || spinning) return;
+  if (!player) { toast('Ingresa tu nombre primero'); return; }
+
+  spinning = true; spinReady = false;
+  document.getElementById('spin-btn').disabled = true;
+  totalSpins++;
+  document.getElementById('stat-spins').textContent = totalSpins;
+
+  // Weighted random
+  const total = PRIZES.reduce((a,p) => a + p.weight, 0);
+  let rand = Math.random() * total, prizeIdx = 0;
+  for (let i = 0; i < PRIZES.length; i++) {
+    rand -= PRIZES[i].weight;
+    if (rand <= 0) { prizeIdx = i; break; }
+  }
+
+  const sliceA = (2 * Math.PI) / N;
+  const spins = 6 + Math.floor(Math.random() * 4);
+  const targetSliceMid = prizeIdx * sliceA + sliceA / 2;
+  // pointer is at top (angle 0 = right, pointer at top = -PI/2)
+  const pointerAngle = -Math.PI / 2;
+  const needed = ((pointerAngle - targetSliceMid) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+  const totalRot = spins * 2 * Math.PI + needed - (angle % (2 * Math.PI));
+  const finalAngle = angle + totalRot;
+
+  const dur = 4500 + Math.random() * 1000;
+  const t0 = performance.now();
+  const a0 = angle;
+
+  function ease(t) { return 1 - Math.pow(1 - t, 4); }
+
+  function frame(now) {
+    const pct = Math.min((now - t0) / dur, 1);
+    angle = a0 + totalRot * ease(pct);
+    drawWheel(angle);
+    if (pct < 1) { requestAnimationFrame(frame); }
+    else {
+      angle = finalAngle;
+      spinning = false;
+      setTimeout(() => showPrize(PRIZES[prizeIdx]), 400);
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── PRIZE MODAL ───────────────────────────────
+function showPrize(p) {
+  const noLuck = p.code === 'SUERTE-MY';
+  document.getElementById('m-emoji').textContent = p.emoji;
+  document.getElementById('m-eyebrow').textContent = noLuck ? '¡Sigue intentando!' : '¡Felicitaciones!';
+  const nameEl = document.getElementById('m-name');
+  nameEl.textContent = p.short;
+  nameEl.className = 'prize-name' + (noLuck ? ' noluck' : p.code === 'CLASE-MY25' ? ' gold' : '');
+  document.getElementById('m-desc').textContent = p.desc;
+  document.getElementById('m-code').textContent = noLuck ? '¡Muéstrame a Yamile o Milena!' : p.code;
+  const cta = document.getElementById('m-cta');
+  cta.textContent = noLuck ? '🍀 ¡Entendido!' : '🎁 Reclamar premio';
+  cta.className = 'modal-cta ' + (noLuck ? 'luck' : 'win');
+  document.getElementById('modal-bg').classList.add('show');
+  if (!noLuck) confetti();
+}
+
+function claimPrize() {
+  const name = document.getElementById('m-name').textContent;
+  const code = document.getElementById('m-code').textContent;
+  const noLuck = name.includes('PRÓXIMA VEZ');
+
+  if (!noLuck) {
+    winners.unshift({ player, prize: name, emoji: document.getElementById('m-emoji').textContent,
+      time: new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}) });
+    totalWins++;
+    document.getElementById('stat-wins').textContent = totalWins;
+    updateBoard();
+    nextPlayer();
+    const msg = `🎉 *¡Gané en la Ruleta Farmasi!*\n\nPremio: *${name}*\n${document.getElementById('m-desc').textContent}\nCódigo: *${code}*\n\n_Evento M&Y · Mayo 2025_\n📲 Yamile: 310 805 1223 | Milena: 321 200 2456`;
+    setTimeout(() => {
+      if (confirm('¡Premio reclamado! ¿Compartir por WhatsApp?')) {
+        window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+      }
+    }, 300);
+  } else {
+    toast('🍀 ¡La próxima es tuya! 😊');
+    nextPlayer();
+  }
+}
+
+function nextPlayer() {
+  document.getElementById('modal-bg').classList.remove('show');
+  player = '';
+  document.getElementById('player-name').value = '';
+  document.getElementById('player-greeting').style.display = 'none';
+  document.getElementById('spin-btn').disabled = true;
+  spinReady = false;
+  document.getElementById('q-text').textContent = 'Ingresa tu nombre para comenzar';
+  document.getElementById('q-options').innerHTML = '';
+  document.getElementById('answer-banner').className = 'answer-banner';
+}
+
+function updateBoard() {
+  const medals = ['🥇','🥈','🥉'];
+  document.getElementById('score-list').innerHTML = winners.slice(0,8).map((w,i) => `
+    <div class="score-item">
+      <span class="score-rank">${medals[i]||'🎖'}</span>
+      <span class="score-name">${w.player}</span>
+      <span class="score-prize">${w.emoji} ${w.prize} · ${w.time}</span>
+    </div>
+  `).join('');
+}
+
+// ── CONFETTI ──────────────────────────────────
+function confetti() {
+  const items = ['🎉','✨','🌟','💫','🎊','🎁','🌸','💕'];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden;';
+  document.body.appendChild(wrap);
+  for (let i = 0; i < 24; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.textContent = items[Math.floor(Math.random()*items.length)];
+      const size = 14 + Math.random() * 18;
+      el.style.cssText = `position:absolute;font-size:${size}px;left:${Math.random()*95}%;top:-30px;animation:drop${i} ${1.2+Math.random()*2}s ease-in forwards;`;
+      const style = document.createElement('style');
+      style.textContent = `@keyframes drop${i}{to{transform:translateY(110vh) rotate(${360+Math.random()*360}deg);opacity:0;}}`;
+      document.head.appendChild(style);
+      wrap.appendChild(el);
+    }, i * 80);
+  }
+  setTimeout(() => wrap.remove(), 5000);
+}
+
+// ── TOAST ─────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Click outside modal to close
+document.getElementById('modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-bg')) nextPlayer();
+});
+</script>
+</body>
+</html>
