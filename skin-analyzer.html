@@ -1027,36 +1027,31 @@ function shareWhatsApp() {
     oily: 'Piel grasa', dry: 'Piel seca', combination: 'Piel mixta',
     normal: 'Piel normal', sensitive: 'Piel sensible'
   }[answers.skin_type] || 'Tu tipo de piel';
-  const msg = `✨ *Diagnóstico de piel DR C TUNA*
-  
-Hola ${clientData.name || ''}! 🌸
 
-*Tipo de piel:* ${skinTypeLabel}
-*Línea recomendada:* ${rec.line}
-_${rec.tagline}_
+  const rutina = rec.skincare.map(function(p) {
+    return p.step + '. ' + p.stepLabel + ': ' + p.name;
+  }).join('\n');
 
-*Tu rutina paso a paso:*
-${rec.skincare.map(p => `${p.step}. *${p.stepLabel}:* ${p.name}`).join('
-')}
+  const msg = '\u2728 *Diagn\u00f3stico de piel DR C TUNA*' +
+    '\n\nHola ' + (clientData.name || '') + '! \ud83c\udf38' +
+    '\n\n*Tipo de piel:* ' + skinTypeLabel +
+    '\n*L\u00ednea recomendada:* ' + rec.line +
+    '\n_' + rec.tagline + '_' +
+    '\n\n*Tu rutina paso a paso:*\n' + rutina +
+    '\n\n*Maquillaje Farmasi sugerido:*' +
+    '\nBases y productos de larga duraci\u00f3n para tu tipo de piel \ud83d\udc84' +
+    '\n\n_Diagn\u00f3stico personalizado por:_' +
+    '\n\ud83d\udcf2 Yamile Contento: 310 805 1223' +
+    '\n\ud83d\udcf2 Milena Arcilla: 321 200 2456' +
+    '\n\n\u00a1Esc\u00edbenos para conseguir tus productos! \ud83d\udecd';
 
-*Maquillaje Farmasi sugerido:*
-Para tu tipo de piel te recomendamos bases y productos de larga duración adaptados a ti 💄
-
-_Diagnóstico personalizado por:_
-📲 Yamile Contento: 310 805 1223
-📲 Milena Arcilla: 321 200 2456
-
-¡Escríbenos para conseguir tus productos! 🛍`;
-
-  // Send to client's own number if available
-  const phone = clientData.phone ? clientData.phone.replace(/\D/g,'') : '';
+  const phone = clientData.phone ? clientData.phone.replace(/\D/g, '') : '';
   const waNumber = phone.length >= 10 ? '57' + phone.slice(-10) : '';
   const waUrl = waNumber
-    ? \`https://wa.me/\${waNumber}?text=\${encodeURIComponent(msg)}\`
-    : \`https://wa.me/?text=\${encodeURIComponent(msg)}\`;
+    ? 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(msg)
+    : 'https://wa.me/?text=' + encodeURIComponent(msg);
   window.open(waUrl, '_blank');
 }
-
 function restartQuiz() {
   answers = {}; currentQ = 0; photoData = null; clientData = {};
   document.getElementById('results').style.display = 'none';
