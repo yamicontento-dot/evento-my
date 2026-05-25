@@ -402,6 +402,7 @@ tr:hover td { background: #fafafa; }
 }
 </style>
 <script>
+try {
 // ═══════════════════════════════════════════
 // FIREBASE REST API — sin CDN externo
 // Funciona desde cualquier origen incluyendo claude.ai
@@ -538,6 +539,7 @@ const db = {
       const poll = async () => {
         try {
           const docs = await fbList(col);
+          if (!docs) return;
           const hash = JSON.stringify(docs.map(d=>d.id+JSON.stringify(d)));
           if (hash !== lastHash) {
             lastHash = hash;
@@ -555,6 +557,7 @@ const db = {
         const poll = async () => {
           try {
             const docs = await fbList(col, field, dir==='desc'?'DESCENDING':'ASCENDING');
+            if (!docs) return;
             const hash = JSON.stringify(docs.map(d=>d.id));
             if (hash !== lastHash) {
               lastHash = hash;
@@ -578,6 +581,10 @@ const db = {
 
 window.__firebaseReady = true;
 console.log('Firebase REST client ready');
+} catch(e) {
+  console.warn('Firebase REST setup error:', e);
+  window.__firebaseReady = true; // still mark ready so init doesn't hang
+}
 </script>
 </head>
 <body>
