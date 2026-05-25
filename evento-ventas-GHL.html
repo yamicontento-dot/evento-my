@@ -338,6 +338,10 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <div class="sec-div"><span>Top Productos</span></div>
   <div class="table-wrap"><table><thead><tr><th>Producto</th><th>Uds</th><th>Ingresos</th></tr></thead>
   <tbody id="res-top"></tbody></table></div>
+
+  <div class="sec-div"><span>Por Cliente</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Cédula</th><th>Uds</th><th>Total</th></tr></thead>
+  <tbody id="res-clientes"></tbody></table></div>
 </div>
 
 <!-- GLAM -->
@@ -910,8 +914,35 @@ function renderResumen(){
   // Top
   const byP={};fs.forEach(s=>{if(!byP[s.productId])byP[s.productId]={n:s.productName,u:0,i:0};byP[s.productId].u+=s.qty;byP[s.productId].i+=s.total;});
   document.getElementById('res-top').innerHTML=Object.values(byP).sort((a,b)=>b.i-a.i).slice(0,8).map(d=>
-    `<tr><td class="p-name">${d.n}</td><td>${d.u}</td><td class="price-c">${fmt(d.i)}</td></tr>`
+    '<tr><td class="p-name">'+d.n+'</td><td>'+d.u+'</td><td class="price-c">'+fmt(d.i)+'</td></tr>'
   ).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:12px">Sin ventas</td></tr>';
+
+  // Por Cliente
+  const byClient={};
+  fs.forEach(s=>{
+    const key=(s.buyer||'Sin nombre')+'||'+(s.cedula||'');
+    if(!byClient[key])byClient[key]={name:s.buyer||'Sin nombre',cedula:s.cedula||'—',uds:0,total:0,productos:[]};
+    byClient[key].uds+=s.qty;
+    byClient[key].total+=s.total;
+    if(!byClient[key].productos.includes(s.productName))byClient[key].productos.push(s.productName);
+  });
+  const clientRows=Object.values(byClient).sort((a,b)=>b.total-a.total);
+  const clientEl=document.getElementById('res-clientes');
+  if(clientEl){
+    if(!clientRows.length){
+      clientEl.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px">Sin ventas aún</td></tr>';
+    } else {
+      clientEl.innerHTML=clientRows.map(c=>{
+        const prodsHtml='<div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4">'+c.productos.join(', ')+'</div>';
+        return '<tr>'+
+          '<td><div class="p-name">'+c.name+'</div>'+prodsHtml+'</td>'+
+          '<td style="font-family:monospace;font-size:12px;color:var(--muted)">'+c.cedula+'</td>'+
+          '<td style="font-weight:600">'+c.uds+'</td>'+
+          '<td class="price-c">'+fmt(c.total)+'</td>'+
+        '</tr>';
+      }).join('');
+    }
+  }
 }
 
 // ── GLAM ─────────────────────────────────────
