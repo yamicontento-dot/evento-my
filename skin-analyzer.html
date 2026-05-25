@@ -918,96 +918,91 @@ function renderResults() {
   const resultsEl = document.getElementById('results');
   resultsEl.style.display = 'block';
 
-  resultsEl.innerHTML = `
-    <!-- RESULT HERO -->
-    <div class="result-hero">
-      <span class="result-emoji">${rec.emoji}</span>
-      <div class="result-skin-type">${skinTypeLabel}</div>
-      <div class="result-title">Línea<br>${rec.line}</div>
-      <div class="result-subtitle">${rec.tagline}</div>
-    </div>
+  // Build HTML using string concatenation - no nested template literals
+  let html = '';
 
-    <!-- DIAGNOSIS TEXT -->
-    <div style="background:rgba(255,255,255,.6);border:1px solid rgba(200,151,58,.2);border-radius:14px;padding:16px 18px;margin-bottom:20px">
-      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:6px">Tu diagnóstico</div>
-      <p style="font-size:13px;color:var(--ink);line-height:1.7">${rec.description}</p>
-      ${photoData ? `<img src="${photoData}" style="width:100%;border-radius:10px;margin-top:12px;max-height:200px;object-fit:cover" alt="Tu foto">` : ''}
-    </div>
+  // Hero
+  html += '<div class="result-hero">';
+  html += '<span class="result-emoji">' + rec.emoji + '</span>';
+  html += '<div class="result-skin-type">' + skinTypeLabel + '</div>';
+  html += '<div class="result-title">Línea<br>' + rec.line + '</div>';
+  html += '<div class="result-subtitle">' + rec.tagline + '</div>';
+  html += '</div>';
 
-    <!-- SKINCARE ROUTINE -->
-    <div class="section-title-result">Tu rutina DR C TUNA <span>paso a paso</span></div>
-    <div class="product-grid">
-      ${rec.skincare.map(p => `
-        <div class="product-card">
-          <div class="prod-step">${p.step}</div>
-          <div class="prod-info">
-            <div class="prod-step-label">${p.stepLabel}</div>
-            <div class="prod-name">${p.name}</div>
-            <div class="prod-desc">${p.desc}</div>
-          </div>
-        </div>
-      `).join('')}
-    </div>
+  // Diagnosis
+  html += '<div style="background:rgba(255,255,255,.6);border:1px solid rgba(200,151,58,.2);border-radius:14px;padding:16px 18px;margin-bottom:20px">';
+  html += '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:6px">Tu diagnóstico</div>';
+  html += '<p style="font-size:13px;color:var(--ink);line-height:1.7">' + rec.description + '</p>';
+  if (photoData) {
+    html += '<img src="' + photoData + '" style="width:100%;border-radius:10px;margin-top:12px;max-height:200px;object-fit:cover" alt="Tu foto">';
+  }
+  html += '</div>';
 
-    <!-- MAKEUP -->
-    <div class="makeup-card">
-      <div class="makeup-title">${makeup.title}</div>
-      <div class="makeup-subtitle">${makeup.subtitle} · Farmasi</div>
-      <div class="makeup-items">
-        ${makeup.items.map(item => `
-          <div class="makeup-item">
-            <span class="makeup-icon">${item.icon}</span>
-            <div>
-              <div class="makeup-name">${item.name}</div>
-              <div class="makeup-detail">${item.detail}</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
+  // Skincare routine
+  html += '<div class="section-title-result">Tu rutina DR C TUNA <span>paso a paso</span></div>';
+  html += '<div class="product-grid">';
+  rec.skincare.forEach(function(p) {
+    html += '<div class="product-card">';
+    html += '<div class="prod-step">' + p.step + '</div>';
+    html += '<div class="prod-info">';
+    html += '<div class="prod-step-label">' + p.stepLabel + '</div>';
+    html += '<div class="prod-name">' + p.name + '</div>';
+    html += '<div class="prod-desc">' + p.desc + '</div>';
+    html += '</div></div>';
+  });
+  html += '</div>';
 
-    <!-- TIPS -->
-    <div class="tips-card">
-      <div class="tips-title">💡 Tips para tu tipo de piel</div>
-      ${tips.map(t => `<div class="tip-item"><span class="tip-dot">→</span>${t}</div>`).join('')}
-    </div>
+  // Makeup
+  html += '<div class="makeup-card">';
+  html += '<div class="makeup-title">' + makeup.title + '</div>';
+  html += '<div class="makeup-subtitle">' + makeup.subtitle + ' · Farmasi</div>';
+  html += '<div class="makeup-items">';
+  makeup.items.forEach(function(item) {
+    html += '<div class="makeup-item">';
+    html += '<span class="makeup-icon">' + item.icon + '</span>';
+    html += '<div><div class="makeup-name">' + item.name + '</div>';
+    html += '<div class="makeup-detail">' + item.detail + '</div></div>';
+    html += '</div>';
+  });
+  html += '</div></div>';
 
-    <!-- SHARE -->
-    <div class="share-card">
-      <div class="share-title">📲 Compartir tu diagnóstico</div>
-      <div class="share-sub">Envía tu rutina personalizada directo a WhatsApp para tenerla siempre a mano</div>
-      <button class="btn-whatsapp" onclick="shareWhatsApp()" style="margin-bottom:12px;font-size:15px;padding:14px">
-        💬 Enviar por WhatsApp a ${clientData.phone || 'mi número'}
-      </button>
-      <div style="display:flex;align-items:center;gap:8px;margin:4px 0 12px">
-        <div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>
-        <span style="font-size:11px;color:var(--muted)">o por correo</span>
-        <div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>
-      </div>
-      <div class="share-field">
-        <input class="share-input" id="share-email" type="email" placeholder="correo@ejemplo.com"
-          value="${clientData.email || ''}">
-        <button class="btn-share" onclick="sendEmail()">Enviar →</button>
-      </div>
-    </div>
+  // Tips
+  html += '<div class="tips-card">';
+  html += '<div class="tips-title">💡 Tips para tu tipo de piel</div>';
+  tips.forEach(function(t) {
+    html += '<div class="tip-item"><span class="tip-dot">→</span>' + t + '</div>';
+  });
+  html += '</div>';
 
-    <!-- CONTACT -->
-    <div style="background:var(--ink);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#fff;margin-bottom:4px">¿Quieres tus productos hoy?</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Contáctanos y te asesoramos personalmente</div>
-      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <a href="https://wa.me/573108051223" style="background:var(--gold);color:var(--ink);padding:10px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">
-          💬 Yamile · 310 805 1223
-        </a>
-        <a href="https://wa.me/573212002456" style="background:rgba(255,255,255,.1);color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">
-          💬 Milena · 321 200 2456
-        </a>
-      </div>
-    </div>
+  // Share — WhatsApp FIRST
+  html += '<div class="share-card">';
+  html += '<div class="share-title">📲 Compartir tu diagnóstico</div>';
+  html += '<div class="share-sub">Envía tu rutina personalizada directo a WhatsApp</div>';
+  html += '<button class="btn-whatsapp" onclick="shareWhatsApp()" style="margin-bottom:12px;font-size:15px;padding:14px">';
+  html += '💬 Enviar por WhatsApp a ' + (clientData.phone || 'mi número');
+  html += '</button>';
+  html += '<div style="display:flex;align-items:center;gap:8px;margin:4px 0 12px">';
+  html += '<div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>';
+  html += '<span style="font-size:11px;color:var(--muted)">o por correo</span>';
+  html += '<div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>';
+  html += '</div>';
+  html += '<div class="share-field">';
+  html += '<input class="share-input" id="share-email" type="email" placeholder="correo@ejemplo.com" value="' + (clientData.email || '') + '">';
+  html += '<button class="btn-share" onclick="sendEmail()">Enviar →</button>';
+  html += '</div></div>';
 
-    <button class="btn-restart" onclick="restartQuiz()">↺ Hacer otro análisis</button>
-  `;
+  // Contact
+  html += '<div style="background:var(--ink);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">';
+  html += '<div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#fff;margin-bottom:4px">¿Quieres tus productos hoy?</div>';
+  html += '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Contáctanos y te asesoramos personalmente</div>';
+  html += '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">';
+  html += '<a href="https://wa.me/573108051223" style="background:var(--gold);color:var(--ink);padding:10px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">💬 Yamile · 310 805 1223</a>';
+  html += '<a href="https://wa.me/573212002456" style="background:rgba(255,255,255,.1);color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">💬 Milena · 321 200 2456</a>';
+  html += '</div></div>';
 
+  html += '<button class="btn-restart" onclick="restartQuiz()">↺ Hacer otro análisis</button>';
+
+  resultsEl.innerHTML = html;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1015,10 +1010,23 @@ function sendEmail() {
   const email = document.getElementById('share-email').value.trim();
   if (!email) { showToast('Ingresa tu correo'); return; }
   const rec = getRecommendation();
-  const subject = `Tu diagnóstico de piel · Línea ${rec.line} DR C TUNA`;
-  const body = `Hola ${clientData.name || ''}!\n\nAquí está tu diagnóstico personalizado de piel:\n\nLÍNEA RECOMENDADA: ${rec.line}\n${rec.tagline}\n\n${rec.description}\n\nTU RUTINA:\n${rec.skincare.map(p => `${p.step}. ${p.stepLabel}: ${p.name}`).join('\n')}\n\n¿Lista para comenzar tu ritual? Escríbenos:\n- Yamile: https://wa.me/573108051223\n- Milena: https://wa.me/573212002456\n\n¡Con cariño, tu equipo DR C TUNA & Farmasi!`;
-  window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  showToast('✓ Abriendo tu correo...');
+  const rutinaEmail = rec.skincare.map(function(p) {
+    return p.step + '. ' + p.stepLabel + ': ' + p.name;
+  }).join('\n');
+  const subject = 'Tu diagnostico de piel - Linea ' + rec.line + ' DR C TUNA';
+  const body = 'Hola ' + (clientData.name || '') + '!' +
+    '\n\nAqui esta tu diagnostico personalizado de piel:' +
+    '\n\nLINEA RECOMENDADA: ' + rec.line +
+    '\n' + rec.tagline +
+    '\n\n' + rec.description +
+    '\n\nTU RUTINA:' +
+    '\n' + rutinaEmail +
+    '\n\nLista para comenzar tu ritual? Escribenos:' +
+    '\n- Yamile: https://wa.me/573108051223' +
+    '\n- Milena: https://wa.me/573212002456' +
+    '\n\nCon carino, tu equipo DR C TUNA & Farmasi!';
+  window.location.href = 'mailto:' + email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  showToast('\u2713 Abriendo tu correo...');
 }
 
 function shareWhatsApp() {
