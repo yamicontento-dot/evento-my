@@ -246,7 +246,7 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <button class="tab" onclick="openModule('ruleta-farmasi.html')" style="color:#9b5de5">🎰 Ruleta</button>
 </div>
 <div id="live-ind">↻ Actualizado</div>
-<div id="buyer-session-bar" style="display:none;background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:8px 16px;font-size:12px;font-weight:600;color:#16a34a;display:flex;align-items:center;justify-content:space-between">
+<div id="buyer-session-bar" style="display:none;background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:8px 16px;font-size:12px;font-weight:600;color:#16a34a;align-items:center;justify-content:space-between">
   <span id="buyer-session-label">👤 Compradora: —</span>
   <button onclick="clearBuyer()" style="background:none;border:none;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">Cambiar</button>
 </div>
@@ -718,7 +718,7 @@ function updateBuyerBar(){
   const bar=document.getElementById('buyer-session-bar');
   const lbl=document.getElementById('buyer-session-label');
   if(sessionBuyer.name&&bar&&lbl){
-    bar.style.display='flex';
+    bar.style.display='flex';bar.style.alignItems='center';bar.style.justifyContent='space-between';
     lbl.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · CC '+sessionBuyer.cedula:'');
   } else if(bar){
     bar.style.display='none';
@@ -975,14 +975,21 @@ function openSell(id){
   currentSellId=id;sellQty=1;
   document.getElementById('sell-qty').textContent=1;
   document.getElementById('sell-price').value=p.price;
-  document.getElementById('sell-buyer').value='';
-  document.getElementById('sell-cedula').value='';
   document.getElementById('sell-notes').value='';
-  document.getElementById('sell-info').innerHTML=`
-    <div class="info-row"><strong>Producto</strong>${p.name}</div>
-    <div class="info-row"><strong>Stock</strong>${stockBadge(p.stock)}</div>
-    <div class="info-row"><strong>Precio</strong>${fmt(p.price)}${isGlam(p)&&p.originalPrice?` <span class="orig-price">(público: ${fmt(p.originalPrice)})</span>`:''}</div>
-  `;
+  // Build info without nested template literals
+  const glamNote=(isGlam(p)&&p.originalPrice)?' (público: '+fmt(p.originalPrice)+')':'';
+  document.getElementById('sell-info').innerHTML=
+    '<div class="info-row"><strong>Producto</strong>'+p.name+'</div>'+
+    '<div class="info-row"><strong>Stock</strong>'+stockBadge(p.stock)+'</div>'+
+    '<div class="info-row"><strong>Precio</strong>'+fmt(p.price)+glamNote+'</div>';
+  // Show active buyer if set
+  const buyerBar=document.getElementById('sell-buyer-bar');
+  if(sessionBuyer.name){
+    buyerBar.style.display='block';
+    buyerBar.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · CC '+sessionBuyer.cedula:'');
+  } else {
+    buyerBar.style.display='none';
+  }
   updatePreview();
   document.getElementById('modal-sell').classList.remove('hidden');
 }
