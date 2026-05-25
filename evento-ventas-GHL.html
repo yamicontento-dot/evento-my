@@ -246,6 +246,10 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <button class="tab" onclick="openModule('ruleta-farmasi.html')" style="color:#9b5de5">🎰 Ruleta</button>
 </div>
 <div id="live-ind">↻ Actualizado</div>
+<div id="buyer-session-bar" style="display:none;background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:8px 16px;font-size:12px;font-weight:600;color:#16a34a;display:flex;align-items:center;justify-content:space-between">
+  <span id="buyer-session-label">👤 Compradora: —</span>
+  <button onclick="clearBuyer()" style="background:none;border:none;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">Cambiar</button>
+</div>
 
 <main>
 
@@ -406,19 +410,36 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
     <div class="form-group"><label class="form-label">Precio de Venta</label>
       <input class="form-input" id="sell-price" type="number" oninput="updatePreview()">
     </div>
-    <div class="form-group"><label class="form-label">Nombre del Comprador</label>
-      <input class="form-input" id="sell-buyer" placeholder="Nombre completo">
-    </div>
-    <div class="form-group"><label class="form-label">Cédula</label>
-      <input class="form-input" id="sell-cedula" placeholder="Número de cédula" inputmode="numeric">
-    </div>
     <div class="form-group"><label class="form-label">Notas</label>
       <input class="form-input" id="sell-notes" placeholder="efectivo, transferencia, descuento...">
     </div>
     <div class="preview-box" id="sell-preview"></div>
+    <div id="sell-buyer-bar" style="display:none;background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--r);padding:8px 12px;font-size:12px;font-weight:600;color:var(--green);margin-top:8px"></div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('modal-sell')">Cancelar</button>
       <button class="btn-primary" onclick="confirmSale()">✓ Confirmar Venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPRADOR (se muestra UNA sola vez por sesión) -->
+<div class="modal-overlay hidden" id="modal-buyer">
+  <div class="modal">
+    <div class="modal-title">👤 Datos del Comprador</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">
+      Solo se pide una vez. Todos los productos de esta compra quedarán registrados a este comprador.
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nombre completo *</label>
+      <input class="form-input" id="buyer-name-input" placeholder="Nombre completo">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Cédula *</label>
+      <input class="form-input" id="buyer-cedula-input" placeholder="Número de cédula" inputmode="numeric">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="skipBuyer()">Omitir</button>
+      <button class="btn-primary" onclick="saveBuyer()">Guardar y continuar</button>
     </div>
   </div>
 </div>
@@ -444,6 +465,7 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
 <script>
 // ── STATE ────────────────────────────────────
 let currentUser=null,currentSellId=null,sellQty=1,products=[],sales=[],activeDateFilter='all';
+let sessionBuyer={name:'',cedula:''},buyerAsked=false,pendingSaleData=null;
 
 // ── LOCAL STORAGE ────────────────────────────
 function lGet(){const r=localStorage.getItem('my_ev_v5');if(r)return JSON.parse(r);return{products:[],sales:[]};}
@@ -657,7 +679,51 @@ function login(user){
   renderAll();
   startListeners();
 }
-function logout(){currentUser=null;document.getElementById('login-screen').classList.remove('hidden');}
+function logout(){currentUser=null;document.getElementById('login-screen').classList.remove('hidden');sessionBuyer={name:'',cedula:''};buyerAsked=false;updateBuyerBar();}
+
+function saveBuyer(){
+  const name=document.getElementById('buyer-name-input').value.trim();
+  const cedula=document.getElementById('buyer-cedula-input').value.trim();
+  if(!name&&!cedula){skipBuyer();return;}
+  sessionBuyer={name,cedula};
+  closeModal('modal-buyer');
+  updateBuyerBar();
+  // Retroactively update last saved sale with buyer info
+  if(sales.length>0){
+    const last=sales[0];
+    if(!last.buyer){
+      last.buyer=name;last.cedula=cedula;
+      const st=lGet();if(st.sales&&st.sales[0]){st.sales[0].buyer=name;st.sales[0].cedula=cedula;lSave(st);}
+      try{fbUpdate('sales',last.id,{buyer:name,cedula});}catch(e){}
+    }
+  }
+  showToast('✓ Comprador guardado: '+name);
+  renderAll();
+}
+
+function skipBuyer(){
+  closeModal('modal-buyer');
+  if(!sessionBuyer.name)sessionBuyer={name:'',cedula:''};
+}
+
+function clearBuyer(){
+  sessionBuyer={name:'',cedula:''};buyerAsked=false;
+  updateBuyerBar();
+  document.getElementById('buyer-name-input').value='';
+  document.getElementById('buyer-cedula-input').value='';
+  showToast('Comprador eliminado');
+}
+
+function updateBuyerBar(){
+  const bar=document.getElementById('buyer-session-bar');
+  const lbl=document.getElementById('buyer-session-label');
+  if(sessionBuyer.name&&bar&&lbl){
+    bar.style.display='flex';
+    lbl.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · CC '+sessionBuyer.cedula:'');
+  } else if(bar){
+    bar.style.display='none';
+  }
+}
 function openModule(url){window.open(url,'_blank');}
 
 // ── FIREBASE LISTENERS ───────────────────────
@@ -931,10 +997,8 @@ async function confirmSale(){
   const p=products.find(x=>x.id===currentSellId);
   if(!p||p.stock<sellQty){showToast('Stock insuficiente',true);return;}
   const price=parseFloat(document.getElementById('sell-price').value)||p.price;
-  const buyer=document.getElementById('sell-buyer').value.trim();
-  const cedula=document.getElementById('sell-cedula').value.trim();
   const notes=document.getElementById('sell-notes').value.trim();
-  const saleData={productId:p.id,productName:p.name,category:p.category,price,cost:p.cost,qty:sellQty,total:price*sellQty,user:currentUser,buyer,cedula,notes,timestamp:new Date().toISOString()};
+  const saleData={productId:p.id,productName:p.name,category:p.category,price,cost:p.cost,qty:sellQty,total:price*sellQty,user:currentUser,buyer:sessionBuyer.name,cedula:sessionBuyer.cedula,notes,timestamp:new Date().toISOString()};
   // Save locally first
   const saleId=Date.now().toString();
   const mp=products.find(x=>x.id===p.id);
@@ -947,6 +1011,8 @@ async function confirmSale(){
   closeModal('modal-sell');
   showToast('✓ Venta registrada · '+fmt(price*sellQty));
   renderAll();
+  // Ask for buyer once per session if not asked yet
+  if(!buyerAsked){buyerAsked=true;setTimeout(()=>document.getElementById('modal-buyer').classList.remove('hidden'),400);}
   // Firebase background sync
   try{await Promise.all([fbAdd('sales',{...saleData,localId:saleId}),fbUpdate('products',p.id,{stock:mp?mp.stock:p.stock-sellQty,sold:mp?mp.sold:(p.sold||0)+sellQty})]);}catch(e){console.warn('Firebase sync:',e.message);}
 }
