@@ -759,11 +759,9 @@ function login(user){
   const glamMgnCol=document.getElementById('glam-mgn-col');
   if(glamMgnBadge)glamMgnBadge.style.display=user==='Yamile'?'block':'none';
   if(glamMgnCol)glamMgnCol.style.display=user==='Yamile'?'':'none';
-  // Always start from fresh catalog — no localStorage merge
+  // Start with catalog, Firebase will override via poll
   products=getInitialProducts();
   sales=[];
-  // Clear stale localStorage so it never overrides Firebase
-  localStorage.removeItem('my_ev_v5');
   renderAll();
   startListeners();
 }
@@ -826,10 +824,14 @@ async function startListeners(){
   // Firebase is the only source of truth
   window.forcePollProducts=async()=>{
     const docs=await fbList('products');
-    if(!docs) return;
+    if(!docs) return; // network error, keep current
+    // Also check localStorage for unsynced custom products
+    const localProds=(lGet().products||[]).filter(p=>p.id&&p.id.startsWith('CUSTOM-'));
     const fbMap={};
-    docs.forEach(function(d){fbMap[d.id]=d;});
+    docs.forEach(function(d){if(d&&d.id)fbMap[d.id]=d;});
     const initialIds=new Set(getInitialProducts().map(function(p){return p.id;}));
+
+    // Build merged product list
     var updated=getInitialProducts().map(function(p){
       var fb=fbMap[p.id];
       if(fb) return Object.assign({},p,{
@@ -841,23 +843,33 @@ async function startListeners(){
       });
       return p;
     });
+
+    // Add custom products from Firebase not in initial catalog
+    const fbCustomIds=new Set();
     docs.forEach(function(d){
-      if(!initialIds.has(d.id)&&d.name){
-        updated.push({id:d.id,name:d.name,ref:d.ref||d.id,
-          price:d.price||0,cost:d.cost||0,margin:d.margin||30,
+      if(d&&d.id&&d.name&&!initialIds.has(d.id)){
+        fbCustomIds.add(d.id);
+        updated.push({
+          id:d.id, name:d.name, ref:d.ref||d.id,
+          price:d.price||0, cost:d.cost||0, margin:d.margin||30,
           category:d.category||'Farmasi Maquillaje',
           presentation:d.presentation||'',
           stock:typeof d.stock==='number'?d.stock:0,
           sold:typeof d.sold==='number'?d.sold:0,
-          active:d.active!==false});
+          active:d.active!==false, originalPrice:d.originalPrice,
+          discountPct:d.discountPct
+        });
       }
     });
-    var prevHash=products.map(function(p){return p.id+'|'+p.stock+'|'+p.sold+'|'+p.active+'|'+p.price;}).join('||');
-    var newHash=updated.map(function(p){return p.id+'|'+p.stock+'|'+p.sold+'|'+p.active+'|'+p.price;}).join('||');
-    if(prevHash!==newHash){
-      products=updated;
-      if(currentUser){flashLive();renderAll();}
-    }
+    // Add local-only products not yet synced to Firebase
+    localProds.forEach(function(lp){
+      if(!fbCustomIds.has(lp.id)&&!initialIds.has(lp.id)){
+        updated.push(lp);
+      }
+    });
+    // Always update — Firebase is truth
+    products=updated;
+    if(currentUser) renderAll();
   }
   window.forcePollProducts();
   setInterval(window.forcePollProducts,POLL_MS);
@@ -1023,15 +1035,58 @@ function renderResumen(){
     <div class="kpi"><div class="kpi-label">Margen Bruto</div><div class="kpi-value green">${fmt(tm)}</div><div class="kpi-sub">${mp}%</div></div>
     <div class="kpi"><div class="kpi-label">Costo</div><div class="kpi-value" style="color:var(--muted)">${fmt(tc)}</div></div>
   `;
-  // Farmasi vs GLAM split
-  const fSales=fs.filter(s=>!s.category?.startsWith('GLAM'));
-  const gSales=fs.filter(s=>s.category?.startsWith('GLAM'));
-  const fT=fSales.reduce((a,s)=>a+s.total,0),fM=fSales.reduce((a,s)=>a+(s.price-s.cost)*s.qty,0);
-  const gT=gSales.reduce((a,s)=>a+s.total,0),gM=gSales.reduce((a,s)=>a+(s.price-s.cost)*s.qty,0);
-  document.getElementById('res-split').innerHTML=`
-    <div class="kpi"><div class="kpi-label">Farmasi + DR C TUNA + Suplementos</div><div class="kpi-value">${fmt(fT)}</div><div class="kpi-sub" style="color:var(--green)">Margen: ${fmt(fM)}</div></div>
-    <div class="kpi" style="border-color:var(--gold-b);background:var(--gold-bg)"><div class="kpi-label" style="color:var(--gold)">✨ GLAM by Yam</div><div class="kpi-value" style="color:var(--gold)">${fmt(gT)}</div><div class="kpi-sub" style="color:var(--green)">Margen: ${fmt(gM)}</div></div>
-  `;
+  // Margen por bloque y por socia
+  // GLAM (MAC, Clinique, Estée Lauder) = 100% Yamile
+  // Farmasi + DR C TUNA + Suplementos = 50% Milena / 50% Yamile
+  const glamCats=['GLAM MAC','GLAM Clinique','GLAM Estee Lauder'];
+  const glamSalesR=fs.filter(s=>glamCats.includes(s.category));
+  const farSalesR=fs.filter(s=>!glamCats.includes(s.category));
+
+  const glamT=glamSalesR.reduce((a,s)=>a+s.total,0);
+  const glamM=glamSalesR.reduce((a,s)=>a+(s.price-s.cost)*s.qty,0);
+  const farT=farSalesR.reduce((a,s)=>a+s.total,0);
+  const farM=farSalesR.reduce((a,s)=>a+(s.price-s.cost)*s.qty,0);
+
+  // Yamile: 50% de Farmasi/DRC/Supl + 100% de GLAM
+  const yamT=Math.round(farT*0.5)+glamT;
+  const yamM=Math.round(farM*0.5)+glamM;
+  // Milena: 50% de Farmasi/DRC/Supl
+  const milT=Math.round(farT*0.5);
+  const milM=Math.round(farM*0.5);
+
+  const splitEl=document.getElementById('res-split');
+  if(splitEl) splitEl.innerHTML=
+    '<div class="kpi" style="grid-column:1/-1;background:#f8faff;border-color:#c7d9ff">'+
+      '<div class="kpi-label" style="color:var(--primary)">📊 Distribución de margen</div>'+
+      '<div style="font-size:11px;color:var(--muted);margin-top:2px">Farmasi/DRC/Supl ÷ 50/50 · GLAM 100% Yamile</div>'+
+    '</div>'+
+    '<div class="kpi" style="border-color:#ddd6fe;background:#f5f3ff">'+
+      '<div class="kpi-label" style="color:#7c3aed">✨ Yamile · GLAM</div>'+
+      '<div class="kpi-value" style="color:#7c3aed">'+fmt(glamM)+'</div>'+
+      '<div class="kpi-sub">Ventas: '+fmt(glamT)+'</div>'+
+    '</div>'+
+    '<div class="kpi" style="border-color:#bbf7d0;background:#f0fdf4">'+
+      '<div class="kpi-label" style="color:var(--green)">🌿 Yamile · Farmasi/DRC</div>'+
+      '<div class="kpi-value green">'+fmt(Math.round(farM*0.5))+'</div>'+
+      '<div class="kpi-sub">Ventas 50%: '+fmt(Math.round(farT*0.5))+'</div>'+
+    '</div>'+
+    '<div class="kpi" style="border-color:#ddd6fe;background:#faf5ff">'+
+      '<div class="kpi-label" style="color:#9333ea">💜 Yamile · Total</div>'+
+      '<div class="kpi-value" style="color:#9333ea">'+fmt(yamM)+'</div>'+
+      '<div class="kpi-sub">Ingresos: '+fmt(yamT)+'</div>'+
+    '</div>'+
+    '<div class="kpi" style="border-color:#fde68a;background:#fffbeb">'+
+      '<div class="kpi-label" style="color:#92400e">⭐ Milena · Farmasi/DRC</div>'+
+      '<div class="kpi-value" style="color:#b45309">'+fmt(milM)+'</div>'+
+      '<div class="kpi-sub">Ingresos: '+fmt(milT)+'</div>'+
+    '</div>'+
+    '<div class="kpi" style="border-color:#e5e7eb">'+
+      '<div class="kpi-label">Farmasi+DRC Total</div>'+
+      '<div class="kpi-value">'+fmt(farT)+'</div>'+
+      '<div class="kpi-sub">Margen: '+fmt(farM)+'</div>'+
+    '</div>';
+
+
   // Por vendedora
   const byU={};fs.forEach(s=>{if(!byU[s.user])byU[s.user]={v:0,i:0};byU[s.user].v+=s.qty;byU[s.user].i+=s.total;});
   document.getElementById('res-usuarios').innerHTML=Object.entries(byU).map(([u,d])=>
@@ -1235,12 +1290,29 @@ async function addProduct(){
   const st=lGet();st.products=[...products];lSave(st);
   ['new-name','new-ref','new-price','new-pres'].forEach(i=>{if(document.getElementById(i))document.getElementById(i).value='';});
   document.getElementById('new-stock').value=2;document.getElementById('new-margin').value=30;
-  showToast('✓ Producto "'+name+'" agregado');renderAll();
-  try{
-    await fbSet('products',id,prod);
-    // Force immediate poll so product appears on all devices
+  showToast('✓ "'+name+'" guardado localmente...');
+  renderAll();
+  // Save to Firebase with explicit retry
+  let saved=false;
+  for(let attempt=0;attempt<3;attempt++){
+    try{
+      const ok=await fbSet('products',id,prod);
+      if(ok){saved=true;break;}
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,1000));
+  }
+  if(saved){
+    showToast('✓ "'+name+'" guardado en Firebase ✓');
     if(window.forcePollProducts) await window.forcePollProducts();
-  }catch(e){}
+  } else {
+    showToast('⚠️ Sin conexión — producto guardado localmente',true);
+    // Keep in localStorage as fallback
+    const st=lGet();
+    if(!st.products) st.products=[];
+    const existing=st.products.findIndex(p=>p.id===id);
+    if(existing>=0) st.products[existing]=prod; else st.products.push(prod);
+    lSave(st);
+  }
 }
 
 // ── TOGGLE ACTIVE ─────────────────────────────

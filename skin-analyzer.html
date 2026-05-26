@@ -1021,11 +1021,23 @@ function renderResults() {
   html += '<div style="font-size:13px;color:rgba(255,255,255,.9);line-height:1.8">';
   html += 'Entre todos los compradores sorteamos:<br>';
   html += '<strong>✅ Descuentos exclusivos</strong><br>';
-  html += '<strong>✅ Clase de skin care y maquillaje</strong><br>';
-  html += 'con cosmetóloga y maquilladora profesional<br>';
+  html += '<strong>✅ Clase skin care y maquillaje</strong> con cosmetóloga y maquilladora profesional<br>';
   html += '<strong>✅ Cupo Reto 30 Días</strong> para bajar de peso<br>';
-  html += 'con café de achicoria y gel paprika<br>';
-  html += '<em style="font-size:11px;opacity:.8">¡Solo compradores del evento participan!</em>';
+  html += '<em style="font-size:11px;opacity:.8">¡Solo compradores participan!</em>';
+  html += '</div></div>';
+
+  // Reto 30 días product bundle card
+  // Prices: Gomas Vinagoc 111500, Cafe achicoria (DRC), Gel paprika (DRC)
+  // Use approximate prices visible in catalog
+  html += '<div style="background:linear-gradient(135deg,#1a3a2a,#0f2416);border-radius:16px;padding:20px;margin-bottom:16px">';
+  html += '<div style="font-size:16px;font-weight:700;color:#68d391;margin-bottom:4px">💪 Reto 30 Días · Kit Completo</div>';
+  html += '<div style="font-size:12px;color:rgba(255,255,255,.6);margin-bottom:14px">Baja de peso de forma natural</div>';
+  ['Gomas de Vinagre de Manzana Nutriplus','Café de Achicoria DR C TUNA','Gel de Paprika DR C TUNA'].forEach(function(name){
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px;color:rgba(255,255,255,.85)">';
+    html += '<span style="color:#68d391;font-size:14px">✓</span><span>'+name+'</span></div>';
+  });
+  html += '<div style="margin-top:14px;background:rgba(104,211,145,.15);border:1px solid rgba(104,211,145,.3);border-radius:10px;padding:12px;text-align:center">';
+  html += '<div style="font-size:13px;color:rgba(255,255,255,.7)">Consúltanos el precio del kit completo 🌿</div>';
   html += '</div></div>';
 
   // Contact
@@ -1094,8 +1106,15 @@ function shareWhatsApp() {
     '\nEntre todos los compradores del evento sortearemos:' +
     '\n\u2705 Descuentos exclusivos' +
     '\n\u2705 Clase de skin care y maquillaje con cosmet\u00f3loga y maquilladora profesional' +
-    '\n\u2705 Cupo en el *Reto 30 D\u00edas* para bajar de peso con caf\u00e9 de achicoria y gel paprika' +
-    '\n\n_\u00a1Solo compradores del evento participan!_ \ud83d\udc95';
+    '\n\u2705 Cupo en el *Reto 30 D\u00edas* para bajar de peso' +
+    '\n\n' +
+    '\ud83d\udcaa *RETO 30 D\u00cdAS \u2014 Kit Completo*' +
+    '\nBaja de peso de forma natural con:' +
+    '\n\u2022 Gomas de vinagre de manzana Farmasi' +
+    '\n\u2022 Caf\u00e9 de achicoria DR C TUNA' +
+    '\n\u2022 Gel de paprika DR C TUNA' +
+    '\n\n\u00bfTe interesa el kit? \u00a1Esc\u00edbeme y te doy la informaci\u00f3n!' +
+    '\n\n_\u00a1Solo compradores del evento participan en el sorteo!_ \ud83d\udc95';
 
   const phone = clientData.phone ? clientData.phone.replace(/\D/g, '') : '';
   const waNumber = phone.length >= 10 ? '57' + phone.slice(-10) : '';
