@@ -340,7 +340,7 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <tbody id="res-top"></tbody></table></div>
 
   <div class="sec-div"><span>Por Cliente</span></div>
-  <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Cédula</th><th>Uds</th><th>Total</th></tr></thead>
+  <div class="table-wrap"><table><thead><tr><th>Cliente</th><th>Tel/WA</th><th>Uds</th><th>Total</th><th></th></tr></thead>
   <tbody id="res-clientes"></tbody></table></div>
 </div>
 
@@ -431,15 +431,15 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <div class="modal">
     <div class="modal-title">👤 Datos del Comprador</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">
-      Solo se pide una vez. Todos los productos de esta compra quedarán registrados a este comprador.
+      Solo se pide una vez por cliente.
     </div>
     <div class="form-group">
-      <label class="form-label">Nombre completo *</label>
+      <label class="form-label">Nombre *</label>
       <input class="form-input" id="buyer-name-input" placeholder="Nombre completo">
     </div>
     <div class="form-group">
-      <label class="form-label">Cédula *</label>
-      <input class="form-input" id="buyer-cedula-input" placeholder="Número de cédula" inputmode="numeric">
+      <label class="form-label">Teléfono / WhatsApp *</label>
+      <input class="form-input" id="buyer-cedula-input" placeholder="300 000 0000" type="tel" inputmode="numeric">
     </div>
     <div class="modal-btns">
       <button class="btn-cancel" onclick="skipBuyer()">Omitir</button>
@@ -460,6 +460,27 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
     <div class="modal-btns">
       <button class="btn-cancel" onclick="closeModal('modal-edit')">Cancelar</button>
       <button class="btn-primary" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR CLIENTE -->
+<div class="modal-overlay hidden" id="modal-edit-client">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar Cliente</div>
+    <input type="hidden" id="ec-old-name">
+    <input type="hidden" id="ec-old-cedula">
+    <div class="form-group">
+      <label class="form-label">Nombre</label>
+      <input class="form-input" id="ec-name" placeholder="Nombre completo">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Teléfono / WhatsApp</label>
+      <input class="form-input" id="ec-cedula" placeholder="300 000 0000" type="tel" inputmode="numeric">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-edit-client')">Cancelar</button>
+      <button class="btn-primary" onclick="saveEditClient()">Guardar</button>
     </div>
   </div>
 </div>
@@ -485,8 +506,8 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
     <div class="form-group"><label class="form-label">Comprador</label>
       <input class="form-input" id="es-buyer" placeholder="Nombre completo">
     </div>
-    <div class="form-group"><label class="form-label">Cédula</label>
-      <input class="form-input" id="es-cedula" placeholder="Número de cédula" inputmode="numeric">
+    <div class="form-group"><label class="form-label">Teléfono / WhatsApp</label>
+      <input class="form-input" id="es-cedula" placeholder="300 000 0000" type="tel" inputmode="numeric">
     </div>
     <div class="form-group"><label class="form-label">Notas</label>
       <input class="form-input" id="es-notes" placeholder="efectivo, transferencia...">
@@ -758,7 +779,7 @@ function updateBuyerBar(){
   const lbl=document.getElementById('buyer-session-label');
   if(sessionBuyer.name&&bar&&lbl){
     bar.style.display='flex';bar.style.alignItems='center';bar.style.justifyContent='space-between';
-    lbl.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · CC '+sessionBuyer.cedula:'');
+    lbl.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · '+sessionBuyer.cedula:'');
   } else if(bar){
     bar.style.display='none';
   }
@@ -774,14 +795,42 @@ async function startListeners(){
     showToast('Cargando catálogo en Firebase...');
     for(const p of products)await fbSet('products',p.id,p);
   }
-  // Poll products every POLL_MS
+  // Poll products - Firebase is source of truth
   let lastPHash='';
-  const pollP=async()=>{const docs=await fbList('products');if(!docs)return;const h=docs.map(d=>d.id+d.stock+d.sold).join('|');if(h!==lastPHash){lastPHash=h;const sm={};(lGet().products||[]).forEach(p=>sm[p.id]=p);const fbMap={};docs.forEach(d=>fbMap[d.id]=d);// Merge: FB stock/sold into our local products
-    products=getInitialProducts().map(p=>{const fb=fbMap[p.id];const loc=sm[p.id];if(fb)return{...p,...fb};if(loc)return{...p,...loc};return p;});flashLive();if(currentUser)renderAll();}};
+  const pollP=async()=>{
+    const docs=await fbList('products');
+    if(!docs||!docs.length)return;
+    const h=docs.map(d=>d.id+(d.stock||0)+(d.sold||0)).join('|');
+    if(h!==lastPHash){
+      lastPHash=h;
+      // Firebase wins — merge static catalog fields + live stock/sold from Firebase
+      const fbMap={};docs.forEach(d=>fbMap[d.id]=d);
+      products=getInitialProducts().map(p=>{
+        const fb=fbMap[p.id];
+        if(fb){return Object.assign({},p,{stock:fb.stock||0,sold:fb.sold||0,active:fb.active!==undefined?fb.active:true,price:fb.price||p.price,margin:fb.margin||p.margin,cost:fb.cost||p.cost,name:fb.name||p.name});}
+        return p;
+      });
+      // Sync back to localStorage
+      const st=lGet();st.products=products;lSave(st);
+      flashLive();if(currentUser)renderAll();
+    }
+  };
   pollP();setInterval(pollP,POLL_MS);
-  // Poll sales
+
+  // Poll sales - Firebase is source of truth
   let lastSHash='';
-  const pollS=async()=>{const docs=await fbList('sales','timestamp','DESCENDING');if(!docs)return;const h=docs.map(d=>d.id).join('|');if(h!==lastSHash){lastSHash=h;sales=docs;const st=lGet();st.sales=sales;lSave(st);flashLive();if(currentUser)renderAll();}};
+  const pollS=async()=>{
+    const docs=await fbList('sales','timestamp','DESCENDING');
+    if(!docs)return;
+    const h=docs.map(d=>d.id).join('|');
+    if(h!==lastSHash){
+      lastSHash=h;
+      sales=docs;
+      // Sync to localStorage
+      const st=lGet();st.sales=sales;lSave(st);
+      flashLive();if(currentUser)renderAll();
+    }
+  };
   pollS();setInterval(pollS,POLL_MS);
 }
 function flashLive(){const e=document.getElementById('live-ind');e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500);}
@@ -959,7 +1008,7 @@ function renderResumen(){
   const byClient={};
   fs.forEach(s=>{
     const key=(s.buyer||'Sin nombre')+'||'+(s.cedula||'');
-    if(!byClient[key])byClient[key]={name:s.buyer||'Sin nombre',cedula:s.cedula||'—',uds:0,total:0,productos:[]};
+    if(!byClient[key])byClient[key]={key,name:s.buyer||'Sin nombre',cedula:s.cedula||'—',uds:0,total:0,productos:[]};
     byClient[key].uds+=s.qty;
     byClient[key].total+=s.total;
     if(!byClient[key].productos.includes(s.productName))byClient[key].productos.push(s.productName);
@@ -972,11 +1021,13 @@ function renderResumen(){
     } else {
       clientEl.innerHTML=clientRows.map(c=>{
         const prodsHtml='<div style="font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4">'+c.productos.join(', ')+'</div>';
+        const safeKey=encodeURIComponent(c.key||c.name);
         return '<tr>'+
           '<td><div class="p-name">'+c.name+'</div>'+prodsHtml+'</td>'+
-          '<td style="font-family:monospace;font-size:12px;color:var(--muted)">'+c.cedula+'</td>'+
+          '<td style="font-size:12px;color:var(--muted)">'+c.cedula+'</td>'+
           '<td style="font-weight:600">'+c.uds+'</td>'+
           '<td class="price-c">'+fmt(c.total)+'</td>'+
+          '<td><button class="btn btn-edit" onclick="editClient(''+c.name+'',''+c.cedula+'')" style="padding:4px 8px;font-size:11px">✏️</button></td>'+
         '</tr>';
       }).join('');
     }
@@ -1055,7 +1106,7 @@ function openSell(id){
   const buyerBar=document.getElementById('sell-buyer-bar');
   if(sessionBuyer.name){
     buyerBar.style.display='block';
-    buyerBar.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · CC '+sessionBuyer.cedula:'');
+    buyerBar.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · '+sessionBuyer.cedula:'');
   } else {
     buyerBar.style.display='none';
   }
@@ -1154,6 +1205,46 @@ async function toggleActive(id){
 }
 
 // ── DELETE SALE ───────────────────────────────
+function editClient(name, cedula) {
+  document.getElementById('ec-old-name').value = name;
+  document.getElementById('ec-old-cedula').value = cedula;
+  document.getElementById('ec-name').value = name === 'Sin nombre' ? '' : name;
+  document.getElementById('ec-cedula').value = cedula === '—' ? '' : cedula;
+  document.getElementById('modal-edit-client').classList.remove('hidden');
+}
+
+async function saveEditClient() {
+  const oldName = document.getElementById('ec-old-name').value;
+  const oldCedula = document.getElementById('ec-old-cedula').value;
+  const newName = document.getElementById('ec-name').value.trim();
+  const newCedula = document.getElementById('ec-cedula').value.trim();
+  if (!newName) { showToast('El nombre es obligatorio'); return; }
+  // Update all sales that match this client
+  let updated = 0;
+  sales.forEach(s => {
+    if ((s.buyer || 'Sin nombre') === oldName && (s.cedula || '—') === oldCedula) {
+      s.buyer = newName; s.cedula = newCedula; updated++;
+    }
+  });
+  // Save locally
+  const st = lGet();
+  (st.sales || []).forEach(s => {
+    if ((s.buyer || 'Sin nombre') === oldName && (s.cedula || '—') === oldCedula) {
+      s.buyer = newName; s.cedula = newCedula;
+    }
+  });
+  lSave(st);
+  // Firebase sync - update each matching sale
+  try {
+    for (const s of sales.filter(s => s.buyer === newName)) {
+      await fbUpdate('sales', s.id, {buyer: newName, cedula: newCedula});
+    }
+  } catch(e) { console.warn('Firebase sync:', e.message); }
+  closeModal('modal-edit-client');
+  showToast('✓ Cliente actualizado (' + updated + ' ventas)');
+  renderAll();
+}
+
 let editSaleQty=1;
 
 function openEditSale(saleId){
