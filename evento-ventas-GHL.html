@@ -183,6 +183,23 @@ tr:hover td{background:#fafafa;}
 /* INFO ROWS */
 .info-row{display:flex;gap:6px;font-size:12px;color:var(--muted);margin-bottom:5px;}
 .info-row strong{color:var(--text2);font-weight:600;min-width:65px;}
+
+/* CLIENTES */
+.client-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;box-shadow:var(--sh-sm);}
+.client-name{font-size:15px;font-weight:700;color:var(--text);}
+.client-phone{font-size:12px;color:var(--muted);margin-top:2px;}
+.client-products{margin-top:10px;display:flex;flex-direction:column;gap:7px;}
+.client-prod-row{background:var(--surface2);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.client-prod-info{flex:1;}
+.client-prod-name{font-size:13px;font-weight:600;color:var(--text);}
+.client-prod-date{font-size:11px;color:var(--muted);margin-top:1px;}
+.client-prod-price{font-size:12px;font-weight:700;color:var(--primary);white-space:nowrap;}
+.reorder-badge{font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700;white-space:nowrap;margin-top:4px;display:inline-block;}
+.reorder-soon{background:#fffbeb;color:#92400e;border:1px solid #fde68a;}
+.reorder-now{background:#fef2f2;color:#991b1b;border:1px solid #fecaca;}
+.reorder-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b);}
+.client-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.wa-btn{padding:7px 12px;border-radius:8px;background:#25d366;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:none;}
 </style>
 </head>
 <body>
@@ -241,6 +258,7 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <button class="tab" onclick="switchTab('historial',this)">🧾 Historial</button>
   <button class="tab" onclick="switchTab('resumen',this)">📊 Resumen</button>
   <button class="tab tab-glam" onclick="switchTab('glam',this)">✨ GLAM</button>
+  <button class="tab" onclick="switchTab('clientes',this)" style="color:#0891b2">👥 Clientes</button>
   <button class="tab" onclick="switchTab('admin',this)">⚙️ Admin</button>
   <button class="tab" onclick="openModule('skin-analyzer.html')" style="color:#c8973a">🔬 Skin</button>
   <button class="tab" onclick="openModule('ruleta-farmasi.html')" style="color:#9b5de5">🎰 Ruleta</button>
@@ -365,6 +383,17 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
     <table><thead><tr><th>Producto</th><th>Marca</th><th>Precio Público</th><th>Precio Evento</th><th>Dcto</th><th id="glam-mgn-col" style="display:none">Margen</th><th>Stock</th><th></th></tr></thead>
     <tbody id="glam-tbody"></tbody></table>
   </div>
+</div>
+
+<!-- CLIENTES -->
+<div class="tab-content" id="tab-clientes">
+  <div class="sec-header">
+    <div class="sec-title">Clientes & Seguimiento</div>
+  </div>
+  <div class="filters">
+    <input class="search-input" id="cli-search" placeholder="🔍 Buscar cliente..." oninput="renderClientes()">
+  </div>
+  <div id="clientes-list"></div>
 </div>
 
 <!-- ADMIN -->
@@ -795,27 +824,33 @@ async function startListeners(){
     for(const p of products)await fbSet('products',p.id,p);
   }
   // Firebase is the only source of truth
-  // Products: always overwrite local with Firebase data
   const pollP=async()=>{
     const docs=await fbList('products');
     if(!docs||!docs.length)return;
-    // Merge Firebase live data (stock/sold/price) onto static catalog
     const fbMap={};
     docs.forEach(d=>fbMap[d.id]=d);
+    const initialIds=new Set(getInitialProducts().map(p=>p.id));
+    // Merge Firebase data onto catalog products
     const updated=getInitialProducts().map(p=>{
       const fb=fbMap[p.id];
       if(fb)return Object.assign({},p,{
-        stock:fb.stock||0, sold:fb.sold||0,
+        stock:fb.stock||0,sold:fb.sold||0,
         active:fb.active!==undefined?fb.active:true,
-        price:fb.price||p.price, margin:fb.margin||p.margin,
-        cost:fb.cost||p.cost, name:fb.name||p.name
+        price:fb.price||p.price,margin:fb.margin||p.margin,
+        cost:fb.cost||p.cost,name:fb.name||p.name
       });
       return p;
     });
-    // Only re-render if something actually changed
-    const changed=JSON.stringify(updated.map(p=>p.stock+''+p.sold))!==JSON.stringify(products.map(p=>p.stock+''+p.sold));
+    // Also add custom products (added via Admin, not in initial catalog)
+    docs.forEach(d=>{
+      if(!initialIds.has(d.id)){
+        updated.push(Object.assign({stock:0,sold:0,active:true},d));
+      }
+    });
+    const prevHash=products.map(p=>p.id+p.stock+p.sold+p.active).join('|');
+    const newHash=updated.map(p=>p.id+p.stock+p.sold+p.active).join('|');
     products=updated;
-    if(changed&&currentUser){flashLive();renderAll();}
+    if(prevHash!==newHash&&currentUser){flashLive();renderAll();}
   };
   pollP();
   setInterval(pollP,POLL_MS);
@@ -878,7 +913,7 @@ function filterProds(searchId,catId){
 function isGlam(p){return p.category&&p.category.startsWith('GLAM');}
 
 // ── RENDER ALL ───────────────────────────────
-function renderAll(){renderKPIs();renderVentas();renderInventario();renderHistorial();renderResumen();renderGlam();renderAdmin();}
+function renderAll(){renderKPIs();renderVentas();renderInventario();renderHistorial();renderResumen();renderGlam();renderAdmin();renderClientes();}
 
 // ── KPIs ─────────────────────────────────────
 function renderKPIs(){
@@ -1349,6 +1384,138 @@ function closeModal(id){document.getElementById(id).classList.add('hidden');}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.add('hidden');}));
 
 // ── TOAST ─────────────────────────────────────
+// ── CLIENTES ──────────────────────────────────
+// Days until reorder by product keyword
+function getReorderDays(productName) {
+  const name = productName.toLowerCase();
+  if (name.includes('limpiador') || name.includes('cleanser') || name.includes('wash')) return 60;
+  if (name.includes('serum') || name.includes('sérum')) return 90;
+  if (name.includes('crema') || name.includes('cream') || name.includes('moisturizer')) return 60;
+  if (name.includes('tónico') || name.includes('toner') || name.includes('essence')) return 60;
+  if (name.includes('contorno') || name.includes('eye')) return 90;
+  if (name.includes('aceite') || name.includes('oil')) return 90;
+  if (name.includes('bálsamo') || name.includes('balsam')) return 60;
+  if (name.includes('mascara') || name.includes('pestañina')) return 30;
+  if (name.includes('labial') || name.includes('lipstick') || name.includes('lip')) return 60;
+  if (name.includes('base') || name.includes('foundation') || name.includes('studio fix')) return 45;
+  if (name.includes('polvo') || name.includes('powder')) return 90;
+  if (name.includes('rubor') || name.includes('blush')) return 90;
+  if (name.includes('café') || name.includes('coffee') || name.includes('té ') || name.includes('tea')) return 30;
+  if (name.includes('suplemento') || name.includes('nutriplus') || name.includes('aloe') || name.includes('guarana')) return 30;
+  if (name.includes('desodorante') || name.includes('deo')) return 45;
+  if (name.includes('jabón') || name.includes('soap')) return 30;
+  if (name.includes('fragancia') || name.includes('parfum') || name.includes('passion') || name.includes('power')) return 120;
+  return 60; // default
+}
+
+function getReorderStatus(purchaseDate, reorderDays) {
+  const now = new Date();
+  const purchased = new Date(purchaseDate);
+  const reorderDate = new Date(purchased.getTime() + reorderDays * 24 * 60 * 60 * 1000);
+  const daysLeft = Math.round((reorderDate - now) / (24 * 60 * 60 * 1000));
+  return { reorderDate, daysLeft };
+}
+
+function renderClientes() {
+  const q = (document.getElementById('cli-search')?.value||'').toLowerCase();
+  // Group sales by client
+  const byClient = {};
+  sales.forEach(s => {
+    const key = (s.buyer||'Sin nombre') + '||' + (s.cedula||s.phone||'');
+    if (!byClient[key]) byClient[key] = {
+      name: s.buyer||'Sin nombre',
+      phone: s.cedula||s.phone||'',
+      sales: [], total: 0
+    };
+    byClient[key].sales.push(s);
+    byClient[key].total += s.total;
+  });
+
+  const clients = Object.values(byClient)
+    .filter(c => !q || c.name.toLowerCase().includes(q) || c.phone.includes(q))
+    .sort((a,b) => b.total - a.total);
+
+  const div = document.getElementById('clientes-list');
+  if (!div) return;
+  if (!clients.length) {
+    div.innerHTML = '<div class="empty">Sin clientes registrados aún</div>';
+    return;
+  }
+
+  div.innerHTML = clients.map(c => {
+    // Sort sales by date desc
+    const sortedSales = [...c.sales].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+    const prodsHtml = sortedSales.map(s => {
+      const dt = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
+      const dateStr = dt.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});
+      const reorderDays = getReorderDays(s.productName);
+      const {reorderDate, daysLeft} = getReorderStatus(dt, reorderDays);
+      const reorderStr = reorderDate.toLocaleDateString('es-CO',{day:'2-digit',month:'short'});
+      let badgeClass, badgeText;
+      if (daysLeft < 0) { badgeClass='reorder-now'; badgeText='⚠️ Reabastecer YA'; }
+      else if (daysLeft <= 14) { badgeClass='reorder-soon'; badgeText='🔔 En '+daysLeft+' días ('+reorderStr+')'; }
+      else { badgeClass='reorder-ok'; badgeText='✓ Reponer '+reorderStr; }
+      return '<div class="client-prod-row">' +
+        '<div class="client-prod-info">' +
+          '<div class="client-prod-name">' + s.productName + (s.qty>1?' ×'+s.qty:'') + '</div>' +
+          '<div class="client-prod-date">Comprado ' + dateStr + ' · ' + s.user + '</div>' +
+          '<span class="reorder-badge '+badgeClass+'">'+badgeText+'</span>' +
+        '</div>' +
+        '<div class="client-prod-price">' + fmt(s.total) + '</div>' +
+      '</div>';
+    }).join('');
+
+    // Build WA reminder message
+    const alerts = sortedSales.filter(s => {
+      const dt = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
+      const {daysLeft} = getReorderStatus(dt, getReorderDays(s.productName));
+      return daysLeft <= 14;
+    });
+    const waMsg = buildWAReminder(c, alerts);
+    const waPhone = c.phone ? '57'+c.phone.replace(/\D/g,'').slice(-10) : '';
+    const waUrl = waPhone
+      ? 'https://wa.me/'+waPhone+'?text='+encodeURIComponent(waMsg)
+      : 'https://wa.me/?text='+encodeURIComponent(waMsg);
+
+    const hasAlerts = alerts.length > 0;
+
+    return '<div class="client-card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+        '<div><div class="client-name">'+c.name+'</div>' +
+        (c.phone?'<div class="client-phone">📱 '+c.phone+'</div>':'') +
+        '</div>' +
+        '<a href="'+waUrl+'" target="_blank" class="wa-btn"' +
+          (hasAlerts?' style="background:#e53e3e"':'') + '>' +
+          (hasAlerts?'⚠️':'💬') + ' WhatsApp' +
+        '</a>' +
+      '</div>' +
+      '<div class="client-products">'+prodsHtml+'</div>' +
+      '<div class="client-total-row">' +
+        '<span style="font-size:12px;color:var(--muted)">'+c.sales.length+' compras · Total:</span>' +
+        '<span class="price-c">'+fmt(c.total)+'</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function buildWAReminder(client, alerts) {
+  if (!alerts.length) {
+    return '¡Hola ' + client.name + '! 💕 Soy Yamile, te escribo del evento Farmasi & DR C TUNA. ' +
+      'Fue un placer atenderte. Recuerda que estamos disponibles para cualquier consulta sobre tus productos. ' +
+      '\n\n📲 Yamile: 310 805 1223 | Milena: 321 200 2456';
+  }
+  const productList = alerts.map(s => {
+    const dt = s.timestamp?.toDate ? s.timestamp.toDate() : new Date(s.timestamp);
+    const {daysLeft} = getReorderStatus(dt, getReorderDays(s.productName));
+    return '• ' + s.productName + (daysLeft<0?' — ¡ya es hora de reponer!':' — en '+daysLeft+' días');
+  }).join('\n');
+  return '¡Hola ' + client.name + '! 💕 Soy Yamile del evento Farmasi & DR C TUNA.' +
+    '\n\nTe escribo porque algunos de tus productos están próximos a terminarse:' +
+    '\n\n' + productList +
+    '\n\n¿Te ayudamos a reponer? Tenemos disponibilidad y hacemos envíos 🛍' +
+    '\n\n📲 Yamile: 310 805 1223 | Milena: 321 200 2456';
+}
+
 function showToast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(err?' err':'');clearTimeout(t._t);t._t=setTimeout(()=>t.className='',3500);}
 
 // ── INIT ──────────────────────────────────────
