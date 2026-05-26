@@ -1027,7 +1027,7 @@ function renderResumen(){
           '<td style="font-size:12px;color:var(--muted)">'+c.cedula+'</td>'+
           '<td style="font-weight:600">'+c.uds+'</td>'+
           '<td class="price-c">'+fmt(c.total)+'</td>'+
-          '<td><button class="btn btn-edit" onclick="editClient(''+c.name+'',''+c.cedula+'')" style="padding:4px 8px;font-size:11px">✏️</button></td>'+
+          '<td><button class="btn btn-edit" onclick="editClientById(this)" data-name="'+encodeURIComponent(c.name)+'" data-cedula="'+encodeURIComponent(c.cedula)+'" style="padding:4px 8px;font-size:11px">✏️</button></td>'+
         '</tr>';
       }).join('');
     }
@@ -1205,6 +1205,11 @@ async function toggleActive(id){
 }
 
 // ── DELETE SALE ───────────────────────────────
+function editClientById(btn) {
+  const name = decodeURIComponent(btn.dataset.name || '');
+  const cedula = decodeURIComponent(btn.dataset.cedula || '');
+  editClient(name, cedula);
+}
 function editClient(name, cedula) {
   document.getElementById('ec-old-name').value = name;
   document.getElementById('ec-old-cedula').value = cedula;
