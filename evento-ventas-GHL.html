@@ -648,6 +648,8 @@ function getInitialProducts() {
     S('Guarana Taurine',                     'SUP-GUA-01', 186250, 'Suplemento'),
     S('Lily Shaker',                         'SUP-SHK-01', 63400,  '400ml'),
     S('Gomitas Vinagoc',                     'SUP-GOM-01', 111500, 'Gummies'),
+    F('Pestanina ZEN Super Alargadora',      'FAR-ZEN-001', 40000, 'Maquillaje', 'Mascara alargadora'),
+    F('Primer de Sombras Farmasi',           'FAR-PS-001',  50000, 'Maquillaje', 'Base sombras'),
 
   ].concat((() => {
     const G = (name, id, originalPrice, discountPct, qty, category, presentation='') => {
@@ -712,8 +714,6 @@ function getInitialProducts() {
         G('Farmasi VFX Pro Liquid Concealer 04','GLAM-FAR-CON04', 49500, 50, 1, 'GLAM Farmasi', '6ml · Corrector líquido'),
         G('Farmasi Eye Pencil Burgundy 09','GLAM-FAR-EP09', 41500, 50, 1, 'GLAM Farmasi', 'Lápiz ojos · Burgundy'),
         G('Farmasi Matte Liquid Lipstick 08 Sunset Breeze','GLAM-FAR-LL08', 61800, 50, 1, 'GLAM Farmasi', '4ml · Sunset Breeze'),
-        F('Pestañina ZEN Super Alargadora','FAR-ZEN-001', 40000, 'Maquillaje', 'Máscara alargadora'),
-        F('Primer de Sombras Farmasi','FAR-PS-001', 50000, 'Maquillaje', 'Base sombras'),
     ];
   })());
 }

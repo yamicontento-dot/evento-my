@@ -506,20 +506,17 @@ main {
     <div class="form-title">Casi listo ✨</div>
     <div class="form-sub">Ingresa tus datos para recibir tu diagnóstico personalizado</div>
     <div class="field-group">
-      <label class="field-label">Nombre completo *</label>
-      <input class="field-input" id="client-name" placeholder="Tu nombre">
+      <label class="field-label">Nombre *</label>
+      <input class="field-input" id="client-name" placeholder="Tu nombre completo">
     </div>
     <div class="field-group">
       <label class="field-label">WhatsApp * <span style="font-size:10px;color:var(--green);font-weight:600;text-transform:none">Obligatorio</span></label>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
         <span style="padding:11px 10px;background:rgba(37,211,102,.1);border:1.5px solid rgba(37,211,102,.3);border-radius:10px;font-size:14px;flex-shrink:0">📱</span>
         <input class="field-input" id="client-phone" placeholder="300 000 0000" type="tel" inputmode="numeric" style="border-color:rgba(37,211,102,.4)">
       </div>
     </div>
-    <div class="field-group">
-      <label class="field-label">Correo electrónico <span style="font-size:10px;color:var(--muted);font-weight:400;text-transform:none">(opcional)</span></label>
-      <input class="field-input" id="client-email" type="email" placeholder="tu@correo.com">
-    </div>
+    <input type="hidden" id="client-email" value="">
     <div class="nav-btns">
       <button class="btn-back" onclick="goToQuiz()">← Volver</button>
       <button class="btn-next" onclick="generateResults()">Ver mi diagnóstico →</button>
@@ -882,18 +879,14 @@ function generateResults() {
   const name = document.getElementById('client-name').value.trim();
   const phone = document.getElementById('client-phone').value.trim();
   if (!name) { showToast('Ingresa tu nombre para continuar'); return; }
-  if (!phone) { 
+  if (!phone) {
     showToast('📱 El WhatsApp es obligatorio');
     document.getElementById('client-phone').focus();
     document.getElementById('client-phone').style.borderColor = 'var(--orange)';
     setTimeout(() => document.getElementById('client-phone').style.borderColor = '', 2000);
-    return; 
+    return;
   }
-  clientData = {
-    name,
-    email: document.getElementById('client-email').value.trim(),
-    phone
-  };
+  clientData = { name, phone, email: '' };
 
   document.getElementById('client-section').style.display = 'none';
   const loading = document.getElementById('loading-section');
@@ -991,6 +984,20 @@ function renderResults() {
   html += '<button class="btn-share" onclick="sendEmail()">Enviar →</button>';
   html += '</div></div>';
 
+  // Sorteo banner
+  html += '<div style="background:linear-gradient(135deg,#c8973a,#9b6e2a);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">';
+  html += '<div style="font-size:24px;margin-bottom:8px">🎉</div>';
+  html += '<div style="font-size:17px;color:#fff;font-weight:700;margin-bottom:8px">Sorteo Especial · Mié 27 mayo 2pm</div>';
+  html += '<div style="font-size:13px;color:rgba(255,255,255,.9);line-height:1.8">';
+  html += 'Entre todos los compradores sorteamos:<br>';
+  html += '<strong>✅ Descuentos exclusivos</strong><br>';
+  html += '<strong>✅ Clase de skin care y maquillaje</strong><br>';
+  html += 'con cosmetóloga y maquilladora profesional<br>';
+  html += '<strong>✅ Cupo Reto 30 Días</strong> para bajar de peso<br>';
+  html += 'con café de achicoria y gel paprika<br>';
+  html += '<em style="font-size:11px;opacity:.8">¡Solo compradores del evento participan!</em>';
+  html += '</div></div>';
+
   // Contact
   html += '<div style="background:var(--ink);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">';
   html += '<div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:#fff;margin-bottom:4px">¿Quieres tus productos hoy?</div>';
@@ -1051,7 +1058,14 @@ function shareWhatsApp() {
     '\n\n_Diagn\u00f3stico personalizado por:_' +
     '\n\ud83d\udcf2 Yamile Contento: 310 805 1223' +
     '\n\ud83d\udcf2 Milena Arcilla: 321 200 2456' +
-    '\n\n\u00a1Esc\u00edbenos para conseguir tus productos! \ud83d\udecd';
+    '\n\n\u00a1Esc\u00edbenos para conseguir tus productos! \ud83d\udecd' +
+    '\n\n' +
+    '\ud83c\udf89 *SORTEO ESPECIAL - Mi\u00e9rcoles 27 de mayo, 2pm*' +
+    '\nEntre todos los compradores del evento sortearemos:' +
+    '\n\u2705 Descuentos exclusivos' +
+    '\n\u2705 Clase de skin care y maquillaje con cosmet\u00f3loga y maquilladora profesional' +
+    '\n\u2705 Cupo en el *Reto 30 D\u00edas* para bajar de peso con caf\u00e9 de achicoria y gel paprika' +
+    '\n\n_\u00a1Solo compradores del evento participan!_ \ud83d\udc95';
 
   const phone = clientData.phone ? clientData.phone.replace(/\D/g, '') : '';
   const waNumber = phone.length >= 10 ? '57' + phone.slice(-10) : '';
