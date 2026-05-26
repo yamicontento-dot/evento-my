@@ -539,6 +539,14 @@ main {
 <div id="toast"></div>
 
 <script>
+// ── FIREBASE REST ─────────────────────────────
+const FB_API_KEY="AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s",FB_PROJECT="evento-my";
+const FB_BASE="https://firestore.googleapis.com/v1/projects/"+FB_PROJECT+"/databases/(default)/documents";
+function toFB(v){if(v===null||v===undefined)return{nullValue:null};if(typeof v==='boolean')return{booleanValue:v};if(typeof v==='number'){if(Number.isInteger(v))return{integerValue:String(v)};return{doubleValue:v};}if(typeof v==='string')return{stringValue:v};if(typeof v==='object'&&!Array.isArray(v)){var f={};Object.keys(v).forEach(function(k){f[k]=toFB(v[k]);});return{mapValue:{fields:f}};}return{stringValue:String(v)};}
+function toFields(obj){var f={};Object.keys(obj).forEach(function(k){f[k]=toFB(obj[k]);});return{fields:f};}
+async function fbAdd(col,obj){try{var r=await fetch(FB_BASE+"/"+col+"?key="+FB_API_KEY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(toFields(obj))});return r.ok;}catch(e){return false;}}
+async function fbUpdate(col,id,obj){try{var mask=Object.keys(obj).map(function(k){return"updateMask.fieldPaths="+k;}).join("&");var r=await fetch(FB_BASE+"/"+col+"/"+id+"?key="+FB_API_KEY+"&"+mask,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(toFields(obj))});return r.ok;}catch(e){return false;}}
+
 // ── DATA ──────────────────────────────────────
 const QUESTIONS = [
   {
@@ -875,6 +883,25 @@ function getTips() {
   return TIPS[skinType] || TIPS.normal;
 }
 
+function saveLead(purchased) {
+  if (!clientData.name || !clientData.phone) return;
+  const rec = getRecommendation();
+  const lead = {
+    name: clientData.name,
+    phone: clientData.phone,
+    skinType: clientData.skinType || answers.skin_type || '',
+    concern: answers.concern || '',
+    routine: answers.routine || '',
+    lifestyle: answers.lifestyle || '',
+    recommendedLine: rec ? rec.line : '',
+    purchased: purchased,
+    source: 'skin-analyzer',
+    timestamp: new Date().toISOString(),
+    comments: ''
+  };
+  fbAdd('leads', lead);
+}
+
 function generateResults() {
   const name = document.getElementById('client-name').value.trim();
   const phone = document.getElementById('client-phone').value.trim();
@@ -886,12 +913,15 @@ function generateResults() {
     setTimeout(() => document.getElementById('client-phone').style.borderColor = '', 2000);
     return;
   }
-  clientData = { name, phone, email: '' };
+  clientData = { name, phone, email: '', skinType: answers.skin_type||'', concern: answers.concern||'' };
 
   document.getElementById('client-section').style.display = 'none';
   const loading = document.getElementById('loading-section');
   loading.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Save lead to Firebase (async, non-blocking)
+  saveLead(false);
 
   setTimeout(() => {
     loading.classList.remove('active');

@@ -824,36 +824,43 @@ async function startListeners(){
     for(const p of products)await fbSet('products',p.id,p);
   }
   // Firebase is the only source of truth
-  const pollP=async()=>{
+  window.forcePollProducts=async()=>{
     const docs=await fbList('products');
-    if(!docs||!docs.length)return;
+    if(!docs) return;
     const fbMap={};
-    docs.forEach(d=>fbMap[d.id]=d);
-    const initialIds=new Set(getInitialProducts().map(p=>p.id));
-    // Merge Firebase data onto catalog products
-    const updated=getInitialProducts().map(p=>{
-      const fb=fbMap[p.id];
-      if(fb)return Object.assign({},p,{
-        stock:fb.stock||0,sold:fb.sold||0,
+    docs.forEach(function(d){fbMap[d.id]=d;});
+    const initialIds=new Set(getInitialProducts().map(function(p){return p.id;}));
+    var updated=getInitialProducts().map(function(p){
+      var fb=fbMap[p.id];
+      if(fb) return Object.assign({},p,{
+        stock:typeof fb.stock==='number'?fb.stock:0,
+        sold:typeof fb.sold==='number'?fb.sold:0,
         active:fb.active!==undefined?fb.active:true,
-        price:fb.price||p.price,margin:fb.margin||p.margin,
-        cost:fb.cost||p.cost,name:fb.name||p.name
+        price:fb.price||p.price, margin:fb.margin||p.margin,
+        cost:fb.cost||p.cost, name:fb.name||p.name
       });
       return p;
     });
-    // Also add custom products (added via Admin, not in initial catalog)
-    docs.forEach(d=>{
-      if(!initialIds.has(d.id)){
-        updated.push(Object.assign({stock:0,sold:0,active:true},d));
+    docs.forEach(function(d){
+      if(!initialIds.has(d.id)&&d.name){
+        updated.push({id:d.id,name:d.name,ref:d.ref||d.id,
+          price:d.price||0,cost:d.cost||0,margin:d.margin||30,
+          category:d.category||'Farmasi Maquillaje',
+          presentation:d.presentation||'',
+          stock:typeof d.stock==='number'?d.stock:0,
+          sold:typeof d.sold==='number'?d.sold:0,
+          active:d.active!==false});
       }
     });
-    const prevHash=products.map(p=>p.id+p.stock+p.sold+p.active).join('|');
-    const newHash=updated.map(p=>p.id+p.stock+p.sold+p.active).join('|');
-    products=updated;
-    if(prevHash!==newHash&&currentUser){flashLive();renderAll();}
-  };
-  pollP();
-  setInterval(pollP,POLL_MS);
+    var prevHash=products.map(function(p){return p.id+'|'+p.stock+'|'+p.sold+'|'+p.active+'|'+p.price;}).join('||');
+    var newHash=updated.map(function(p){return p.id+'|'+p.stock+'|'+p.sold+'|'+p.active+'|'+p.price;}).join('||');
+    if(prevHash!==newHash){
+      products=updated;
+      if(currentUser){flashLive();renderAll();}
+    }
+  }
+  window.forcePollProducts();
+  setInterval(window.forcePollProducts,POLL_MS);
 
   // Sales: Firebase always wins, no localStorage comparison
   let lastSaleCount=-1;
@@ -1229,7 +1236,11 @@ async function addProduct(){
   ['new-name','new-ref','new-price','new-pres'].forEach(i=>{if(document.getElementById(i))document.getElementById(i).value='';});
   document.getElementById('new-stock').value=2;document.getElementById('new-margin').value=30;
   showToast('✓ Producto "'+name+'" agregado');renderAll();
-  try{await fbSet('products',id,prod);}catch(e){}
+  try{
+    await fbSet('products',id,prod);
+    // Force immediate poll so product appears on all devices
+    if(window.forcePollProducts) await window.forcePollProducts();
+  }catch(e){}
 }
 
 // ── TOGGLE ACTIVE ─────────────────────────────
@@ -1416,8 +1427,46 @@ function getReorderStatus(purchaseDate, reorderDays) {
   return { reorderDate, daysLeft };
 }
 
-function renderClientes() {
+async function loadLeads() {
+  try {
+    const url = 'https://firestore.googleapis.com/v1/projects/evento-my/databases/(default)/documents/leads?key=AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s&pageSize=200';
+    const r = await fetch(url);
+    if (!r.ok) return [];
+    const data = await r.json();
+    return (data.documents||[]).map(d => {
+      const fields = d.fields||{};
+      function fv(v){if(!v)return'';if(v.stringValue!==undefined)return v.stringValue;if(v.booleanValue!==undefined)return v.booleanValue;if(v.timestampValue!==undefined)return v.timestampValue;return'';}
+      return {
+        id: d.name.split('/').pop(),
+        name: fv(fields.name), phone: fv(fields.phone),
+        skinType: fv(fields.skinType), concern: fv(fields.concern),
+        recommendedLine: fv(fields.recommendedLine),
+        purchased: fv(fields.purchased), timestamp: fv(fields.timestamp),
+        comments: fv(fields.comments)||''
+      };
+    });
+  } catch(e) { return []; }
+}
+
+function saveCmtFromBtn(btn) {
+  const cid = btn.dataset.cid;
+  const txt = document.getElementById('cmt-'+cid);
+  if (cid && txt) saveComment(cid, txt.value);
+}
+
+async function saveComment(leadId, comment) {
+  const url = 'https://firestore.googleapis.com/v1/projects/evento-my/databases/(default)/documents/leads/'+leadId+'?key=AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s&updateMask.fieldPaths=comments';
+  await fetch(url, {method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({fields:{comments:{stringValue:comment}}})});
+  showToast('✓ Comentario guardado');
+}
+
+let cachedLeads = [];
+
+async function renderClientes() {
   const q = (document.getElementById('cli-search')?.value||'').toLowerCase();
+  // Load leads from Skin Analyzer
+  if (!cachedLeads.length) cachedLeads = await loadLeads();
   // Group sales by client
   const byClient = {};
   sales.forEach(s => {
@@ -1441,6 +1490,16 @@ function renderClientes() {
     div.innerHTML = '<div class="empty">Sin clientes registrados aún</div>';
     return;
   }
+
+  // Build lookup of phones that bought
+  const buyerPhones = new Set(Object.values(byClient).map(c=>c.phone.replace(/\D/g,'').slice(-8)).filter(Boolean));
+  
+  // Leads who haven't bought (from skin analyzer)
+  const leadsOnly = cachedLeads.filter(l => {
+    if (!l.phone) return false;
+    const ph = l.phone.replace(/\D/g,'').slice(-8);
+    return !buyerPhones.has(ph);
+  }).filter(l => !q || l.name.toLowerCase().includes(q) || l.phone.includes(q));
 
   div.innerHTML = clients.map(c => {
     // Sort sales by date desc
@@ -1479,14 +1538,26 @@ function renderClientes() {
 
     const hasAlerts = alerts.length > 0;
 
+    // Find matching lead for skin type
+    const lead = cachedLeads.find(l => l.phone && c.phone && l.phone.replace(/\D/g,'').slice(-8) === c.phone.replace(/\D/g,'').slice(-8));
+    const skinLabel = {'oily':'Piel grasa','dry':'Piel seca','combination':'Piel mixta','normal':'Piel normal','sensitive':'Piel sensible'};
+    const skinBadge = lead && lead.skinType ? '<span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#16a34a;font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700;margin-left:6px">'+( skinLabel[lead.skinType]||lead.skinType)+'</span>' : '';
+    const leadLine = lead && lead.recommendedLine ? '<div style="font-size:11px;color:var(--teal);margin-top:2px">🔬 Línea DR C TUNA: '+lead.recommendedLine+'</div>' : '';
+    const commentId = lead ? lead.id : '';
+    const commentVal = lead ? (lead.comments||'') : '';
+    const saveBtn = commentId ? '<button data-cid="'+commentId+'" onclick="saveCmtFromBtn(this)" style="margin-top:5px;padding:5px 12px;border-radius:6px;background:var(--primary);color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer">Guardar nota</button>' : '';
+    const commentBox = '<div style="margin-top:10px"><textarea id="cmt-'+commentId+'" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;resize:none;height:56px;font-family:inherit" placeholder="Notas / seguimiento...">'+commentVal+'</textarea>'+saveBtn+'</div>';
+
+    
     return '<div class="client-card">' +
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
-        '<div><div class="client-name">'+c.name+'</div>' +
+        '<div><div class="client-name">'+c.name+skinBadge+'</div>' +
         (c.phone?'<div class="client-phone">📱 '+c.phone+'</div>':'') +
+        leadLine +
         '</div>' +
         '<a href="'+waUrl+'" target="_blank" class="wa-btn"' +
           (hasAlerts?' style="background:#e53e3e"':'') + '>' +
-          (hasAlerts?'⚠️':'💬') + ' WhatsApp' +
+          (hasAlerts?'⚠️':'💬') + ' WA' +
         '</a>' +
       '</div>' +
       '<div class="client-products">'+prodsHtml+'</div>' +
@@ -1494,8 +1565,28 @@ function renderClientes() {
         '<span style="font-size:12px;color:var(--muted)">'+c.sales.length+' compras · Total:</span>' +
         '<span class="price-c">'+fmt(c.total)+'</span>' +
       '</div>' +
+      commentBox +
     '</div>';
-  }).join('');
+  }).join('') +
+  (leadsOnly.length ? '<div class="sec-div"><span>Prospectos sin compra (Skin Analyzer)</span></div>' +
+    leadsOnly.map(l => {
+      const skinLabel = {'oily':'Piel grasa','dry':'Piel seca','combination':'Piel mixta','normal':'Piel normal','sensitive':'Piel sensible'};
+      const waPhone = '57'+l.phone.replace(/\D/g,'').slice(-10);
+      const promoMsg = '¡Hola '+l.name+'! 💕 Soy Yamile del evento Farmasi. Realizaste tu diagnóstico de piel con nosotras y te recomendamos la línea '+l.recommendedLine+' de DR C TUNA. ¿Te gustaría conocer nuestras opciones y precios? ¡Tenemos disponibilidad y hacemos envíos! 📲 310 805 1223';
+      const waUrl = 'https://wa.me/'+waPhone+'?text='+encodeURIComponent(promoMsg);
+      return '<div class="client-card" style="border-color:#e0f2fe;background:#f0f9ff">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+          '<div>' +
+            '<div class="client-name">'+l.name+' <span style="font-size:10px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;padding:2px 6px;border-radius:4px;font-weight:700">PROSPECTO</span></div>' +
+            '<div class="client-phone">📱 '+l.phone+'</div>' +
+            (l.skinType?'<div style="font-size:11px;color:var(--green);margin-top:2px">🌿 '+(skinLabel[l.skinType]||l.skinType)+' · Línea '+l.recommendedLine+'</div>':'') +
+          '</div>' +
+          '<a href="'+waUrl+'" target="_blank" class="wa-btn" style="background:#0369a1">📨 Promo</a>' +
+        '</div>' +
+        '<div style="margin-top:10px"><textarea id="cmt-'+l.id+'" style="width:100%;padding:8px 10px;border:1px solid #bae6fd;border-radius:8px;font-size:12px;resize:none;height:48px;font-family:inherit" placeholder="Seguimiento / notas...">'+l.comments+'</textarea>' +
+        '<button data-cid="'+l.id+'" onclick="saveCmtFromBtn(this)" style="margin-top:4px;padding:5px 12px;border-radius:6px;background:var(--primary);color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer">Guardar nota</button></div>' +
+      '</div>';
+    }).join('') : '');
 }
 
 function buildWAReminder(client, alerts) {
