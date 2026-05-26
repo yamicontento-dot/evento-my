@@ -730,12 +730,11 @@ function login(user){
   const glamMgnCol=document.getElementById('glam-mgn-col');
   if(glamMgnBadge)glamMgnBadge.style.display=user==='Yamile'?'block':'none';
   if(glamMgnCol)glamMgnCol.style.display=user==='Yamile'?'':'none';
-  // Load products from code (always fresh catalog)
-  const stored=lGet();
-  const initial=getInitialProducts();
-  const storedMap={};(stored.products||[]).forEach(p=>storedMap[p.id]=p);
-  products=initial.map(p=>storedMap[p.id]?{...p,...storedMap[p.id]}:p);
-  sales=stored.sales||[];
+  // Always start from fresh catalog — no localStorage merge
+  products=getInitialProducts();
+  sales=[];
+  // Clear stale localStorage so it never overrides Firebase
+  localStorage.removeItem('my_ev_v5');
   renderAll();
   startListeners();
 }
@@ -795,43 +794,46 @@ async function startListeners(){
     showToast('Cargando catálogo en Firebase...');
     for(const p of products)await fbSet('products',p.id,p);
   }
-  // Poll products - Firebase is source of truth
-  let lastPHash='';
+  // Firebase is the only source of truth
+  // Products: always overwrite local with Firebase data
   const pollP=async()=>{
     const docs=await fbList('products');
     if(!docs||!docs.length)return;
-    const h=docs.map(d=>d.id+(d.stock||0)+(d.sold||0)).join('|');
-    if(h!==lastPHash){
-      lastPHash=h;
-      // Firebase wins — merge static catalog fields + live stock/sold from Firebase
-      const fbMap={};docs.forEach(d=>fbMap[d.id]=d);
-      products=getInitialProducts().map(p=>{
-        const fb=fbMap[p.id];
-        if(fb){return Object.assign({},p,{stock:fb.stock||0,sold:fb.sold||0,active:fb.active!==undefined?fb.active:true,price:fb.price||p.price,margin:fb.margin||p.margin,cost:fb.cost||p.cost,name:fb.name||p.name});}
-        return p;
+    // Merge Firebase live data (stock/sold/price) onto static catalog
+    const fbMap={};
+    docs.forEach(d=>fbMap[d.id]=d);
+    const updated=getInitialProducts().map(p=>{
+      const fb=fbMap[p.id];
+      if(fb)return Object.assign({},p,{
+        stock:fb.stock||0, sold:fb.sold||0,
+        active:fb.active!==undefined?fb.active:true,
+        price:fb.price||p.price, margin:fb.margin||p.margin,
+        cost:fb.cost||p.cost, name:fb.name||p.name
       });
-      // Sync back to localStorage
-      const st=lGet();st.products=products;lSave(st);
-      flashLive();if(currentUser)renderAll();
-    }
+      return p;
+    });
+    // Only re-render if something actually changed
+    const changed=JSON.stringify(updated.map(p=>p.stock+''+p.sold))!==JSON.stringify(products.map(p=>p.stock+''+p.sold));
+    products=updated;
+    if(changed&&currentUser){flashLive();renderAll();}
   };
-  pollP();setInterval(pollP,POLL_MS);
+  pollP();
+  setInterval(pollP,POLL_MS);
 
-  // Poll sales - Firebase is source of truth
-  let lastSHash='';
+  // Sales: Firebase always wins, no localStorage comparison
+  let lastSaleCount=-1;
   const pollS=async()=>{
     const docs=await fbList('sales','timestamp','DESCENDING');
     if(!docs)return;
-    const h=docs.map(d=>d.id).join('|');
-    if(h!==lastSHash){
-      lastSHash=h;
+    if(docs.length!==lastSaleCount||JSON.stringify(docs.map(d=>d.id+d.buyer+d.cedula))!==JSON.stringify(sales.map(d=>d.id+(d.buyer||'')+(d.cedula||'')))){
+      lastSaleCount=docs.length;
       sales=docs;
-      // Sync to localStorage
-      const st=lGet();st.sales=sales;lSave(st);
-      flashLive();if(currentUser)renderAll();
+      flashLive();
+      if(currentUser)renderAll();
     }
   };
-  pollS();setInterval(pollS,POLL_MS);
+  pollS();
+  setInterval(pollS,POLL_MS);
 }
 function flashLive(){const e=document.getElementById('live-ind');e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500);}
 
