@@ -200,6 +200,42 @@ tr:hover td{background:#fafafa;}
 .reorder-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b);}
 .client-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
 .wa-btn{padding:7px 12px;border-radius:8px;background:#25d366;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px;text-decoration:none;}
+
+/* ── ACTIVE CLIENT BAR ── */
+#active-client-bar{display:none;background:#fff;border-bottom:2px solid var(--primary);padding:10px 16px;position:sticky;top:42px;z-index:90;}
+.acb-inner{display:flex;align-items:center;gap:10px;max-width:1200px;margin:0 auto;}
+.acb-avatar{width:36px;height:36px;border-radius:50%;background:var(--primary-l);color:var(--primary);font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.acb-info{flex:1;min-width:0;}
+.acb-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.acb-phone{font-size:11px;color:var(--muted);}
+.acb-cart{background:var(--primary);color:#fff;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer;border:none;white-space:nowrap;flex-shrink:0;}
+.acb-cart:disabled{background:var(--border2);color:var(--muted);}
+.acb-change{background:none;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--muted);cursor:pointer;flex-shrink:0;}
+
+/* ── CART BADGE ── */
+.cart-item-count{background:var(--red);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;}
+
+/* ── CLIENT SEARCH MODAL ── */
+.client-search-list{max-height:280px;overflow-y:auto;margin-top:10px;}
+.cs-item{padding:10px 12px;border-radius:8px;border:1px solid var(--border);cursor:pointer;margin-bottom:6px;display:flex;align-items:center;gap:10px;transition:all .15s;}
+.cs-item:hover,.cs-item:active{border-color:var(--primary);background:var(--primary-l);}
+.cs-avatar{width:32px;height:32px;border-radius:50%;background:var(--surface2);color:var(--muted);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cs-info{flex:1;}
+.cs-name{font-size:13px;font-weight:600;color:var(--text);}
+.cs-phone{font-size:11px;color:var(--muted);}
+.cs-total{font-size:11px;font-weight:600;color:var(--green);}
+
+/* ── CART MODAL ── */
+.cart-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.cart-row:last-child{border-bottom:none;}
+.cart-prod-name{flex:1;font-size:13px;font-weight:600;color:var(--text);}
+.cart-qty-ctrl{display:flex;align-items:center;gap:6px;}
+.cart-qty-btn{width:24px;height:24px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;font-weight:700;}
+.cart-qty-num{font-size:13px;font-weight:700;min-width:20px;text-align:center;}
+.cart-item-price{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;}
+.cart-remove{background:none;border:none;color:var(--muted2);font-size:16px;cursor:pointer;padding:0 4px;}
+.cart-remove:hover{color:var(--red);}
+.cart-total-row{display:flex;justify-content:space-between;padding:12px 0 4px;font-weight:700;font-size:15px;}
 </style>
 </head>
 <body>
@@ -264,9 +300,18 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <button class="tab" onclick="openModule('ruleta-farmasi.html')" style="color:#9b5de5">🎰 Ruleta</button>
 </div>
 <div id="live-ind">↻ Actualizado</div>
-<div id="buyer-session-bar" style="display:none;background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:8px 16px;font-size:12px;font-weight:600;color:#16a34a;align-items:center;justify-content:space-between">
-  <span id="buyer-session-label">👤 Compradora: —</span>
-  <button onclick="clearBuyer()" style="background:none;border:none;color:#16a34a;font-size:11px;font-weight:700;cursor:pointer;text-decoration:underline;padding:0">Cambiar</button>
+<div id="active-client-bar">
+  <div class="acb-inner">
+    <div class="acb-avatar" id="acb-avatar">?</div>
+    <div class="acb-info">
+      <div class="acb-name" id="acb-name">Sin cliente activo</div>
+      <div class="acb-phone" id="acb-phone">Selecciona o crea un cliente</div>
+    </div>
+    <button class="acb-cart" id="acb-cart-btn" onclick="openCart()" disabled>
+      🛒 Ver carrito <span class="cart-item-count" id="cart-count">0</span>
+    </button>
+    <button class="acb-change" onclick="openClientModal()">Cambiar</button>
+  </div>
 </div>
 
 <main>
@@ -455,65 +500,58 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   </div>
 </div>
 
-<!-- MODAL COMPRADOR (se muestra UNA sola vez por sesión) -->
-<div class="modal-overlay hidden" id="modal-buyer">
+<!-- MODAL SELECCIONAR/CREAR CLIENTE -->
+<div class="modal-overlay hidden" id="modal-client">
   <div class="modal">
-    <div class="modal-title">👤 Datos del Comprador</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">
-      Solo se pide una vez por cliente.
+    <div class="modal-title">👤 Cliente</div>
+    <div class="form-group">
+      <input class="form-input" id="client-search-input" placeholder="🔍 Buscar por nombre o teléfono..." oninput="searchClients(this.value)">
+    </div>
+    <div class="client-search-list" id="client-search-list"></div>
+    <div style="margin:14px 0 10px;display:flex;align-items:center;gap:8px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--muted);font-weight:600">NUEVO CLIENTE</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
     </div>
     <div class="form-group">
       <label class="form-label">Nombre *</label>
-      <input class="form-input" id="buyer-name-input" placeholder="Nombre completo">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Teléfono / WhatsApp *</label>
-      <input class="form-input" id="buyer-cedula-input" placeholder="300 000 0000" type="tel" inputmode="numeric">
-    </div>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="skipBuyer()">Omitir</button>
-      <button class="btn-primary" onclick="saveBuyer()">Guardar y continuar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL EDITAR -->
-<div class="modal-overlay hidden" id="modal-edit">
-  <div class="modal">
-    <div class="modal-title">Editar Producto</div>
-    <input type="hidden" id="edit-id">
-    <div class="form-group"><label class="form-label">Nombre</label><input class="form-input" id="edit-name"></div>
-    <div class="form-group"><label class="form-label">Precio de Venta (COP)</label><input class="form-input" id="edit-price" type="number"></div>
-    <div class="form-group"><label class="form-label">Margen %</label><input class="form-input" id="edit-margin" type="number"></div>
-    <div class="form-group"><label class="form-label">Stock</label><input class="form-input" id="edit-stock" type="number" min="0"></div>
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeModal('modal-edit')">Cancelar</button>
-      <button class="btn-primary" onclick="saveEdit()">Guardar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL EDITAR CLIENTE -->
-<div class="modal-overlay hidden" id="modal-edit-client">
-  <div class="modal">
-    <div class="modal-title">✏️ Editar Cliente</div>
-    <input type="hidden" id="ec-old-name">
-    <input type="hidden" id="ec-old-cedula">
-    <div class="form-group">
-      <label class="form-label">Nombre</label>
-      <input class="form-input" id="ec-name" placeholder="Nombre completo">
+      <input class="form-input" id="new-client-name" placeholder="Nombre completo">
     </div>
     <div class="form-group">
       <label class="form-label">Teléfono / WhatsApp</label>
-      <input class="form-input" id="ec-cedula" placeholder="300 000 0000" type="tel" inputmode="numeric">
+      <input class="form-input" id="new-client-phone" placeholder="300 000 0000" type="tel" inputmode="numeric">
     </div>
     <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeModal('modal-edit-client')">Cancelar</button>
-      <button class="btn-primary" onclick="saveEditClient()">Guardar</button>
+      <button class="btn-cancel" onclick="closeModal('modal-client')">Cancelar</button>
+      <button class="btn-primary" onclick="createAndSelectClient()">Crear y seleccionar</button>
     </div>
   </div>
 </div>
 
+<!-- MODAL CARRITO -->
+<div class="modal-overlay hidden" id="modal-cart">
+  <div class="modal">
+    <div class="modal-title" id="cart-modal-title">🛒 Carrito</div>
+    <div id="cart-items-list"></div>
+    <div class="cart-total-row">
+      <span>Total</span>
+      <span id="cart-total-display" class="price-c">$0</span>
+    </div>
+    <div style="background:var(--primary-l);border:1px solid var(--primary-b);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--primary);font-weight:600;text-align:center;margin-top:4px">
+      💡 Puedes seguir agregando productos o finalizar la compra
+    </div>
+    <div class="modal-btns" style="flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="finalizeCart()" style="width:100%;padding:14px;font-size:15px">
+        ✓ Finalizar compra
+      </button>
+      <button class="btn-cancel" style="width:100%;text-align:center" onclick="closeModal('modal-cart')">
+        + Agregar más productos
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR VENTA -->
 <!-- MODAL EDITAR VENTA -->
 <div class="modal-overlay hidden" id="modal-edit-sale">
   <div class="modal">
@@ -554,7 +592,9 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
 <script>
 // ── STATE ────────────────────────────────────
 let currentUser=null,currentSellId=null,sellQty=1,products=[],sales=[],activeDateFilter='all';
-let sessionBuyer={name:'',cedula:''},buyerAsked=false,pendingSaleData=null;
+let activeClient=null; // {id, name, phone}
+let cart=[]; // [{productId, productName, category, price, cost, qty, notes}]
+let allClients=[]; // cached from Firebase
 
 // ── LOCAL STORAGE ────────────────────────────
 function lGet(){const r=localStorage.getItem('my_ev_v5');if(r)return JSON.parse(r);return{products:[],sales:[]};}
@@ -748,8 +788,194 @@ function getInitialProducts() {
 }
 
 // ── AUTH ─────────────────────────────────────
+// ── CLIENT SYSTEM ────────────────────────────────────
 function toggleYamileForm(){const f=document.getElementById('yamile-auth');f.style.display=f.style.display==='none'?'block':'none';if(f.style.display==='block')setTimeout(()=>document.getElementById('yamile-email').focus(),100);}
 function loginYamile(){const e=document.getElementById('yamile-email').value.trim().toLowerCase();const err=document.getElementById('yamile-err');if(e==='yamicontento@gmail.com'){err.style.display='none';login('Yamile');}else{err.style.display='block';}}
+
+// Client modal
+function openClientModal(){
+  document.getElementById('new-client-name').value='';
+  document.getElementById('new-client-phone').value='';
+  document.getElementById('client-search-input').value='';
+  searchClients('');
+  document.getElementById('modal-client').classList.remove('hidden');
+}
+
+function searchClients(q){
+  const list=document.getElementById('client-search-list');
+  q=(q||'').toLowerCase().trim();
+  const matches=allClients.filter(c=>
+    !q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)
+  ).slice(0,8);
+
+  if(!matches.length){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);padding:12px;font-size:13px">'+(q?'Sin resultados para "'+q+'"':'No hay clientes aún — crea uno abajo')+'</div>';
+    return;
+  }
+  list.innerHTML=matches.map(c=>{
+    const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const totalStr=c.totalSpent?fmt(c.totalSpent):'';
+    return '<div class="cs-item" data-cid="'+c.id+'" onclick="selectClientById(this)">'+
+      '<div class="cs-avatar">'+initials+'</div>'+
+      '<div class="cs-info">'+
+        '<div class="cs-name">'+c.name+'</div>'+
+        (c.phone?'<div class="cs-phone">📱 '+c.phone+'</div>':'')+
+      '</div>'+
+      (totalStr?'<div class="cs-total">'+totalStr+'</div>':'')+
+    '</div>';
+  }).join('');
+}
+
+function selectClient(id){
+  const c=allClients.find(x=>x.id===id);
+  if(!c)return;
+  setActiveClient(c);
+  closeModal('modal-client');
+  showToast('✓ Cliente: '+c.name);
+}
+
+async function createAndSelectClient(){
+  const name=document.getElementById('new-client-name').value.trim();
+  const phone=document.getElementById('new-client-phone').value.trim();
+  if(!name){showToast('El nombre es obligatorio',true);return;}
+  const id='CLT-'+Date.now().toString(36).toUpperCase();
+  const client={id,name,phone,createdBy:currentUser,createdAt:new Date().toISOString(),totalSpent:0};
+  allClients.unshift(client);
+  setActiveClient(client);
+  closeModal('modal-client');
+  showToast('✓ Cliente creado: '+name);
+  // Save to Firebase
+  try{await fbSet('clients',id,client);}catch(e){console.warn('FB:',e);}
+}
+
+function setActiveClient(c){
+  activeClient=c;
+  const bar=document.getElementById('active-client-bar');
+  if(bar) bar.style.display='block';
+  const initials=c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const av=document.getElementById('acb-avatar');
+  const nm=document.getElementById('acb-name');
+  const ph=document.getElementById('acb-phone');
+  if(av) av.textContent=initials;
+  if(nm) nm.textContent=c.name;
+  if(ph) ph.textContent=c.phone?'📱 '+c.phone:'Sin teléfono';
+  updateCartBadge();
+}
+
+function updateCartBadge(){
+  const count=cart.reduce(function(a,i){return a+i.qty;},0);
+  const el=document.getElementById('cart-count');
+  const btn=document.getElementById('acb-cart-btn');
+  if(el) el.textContent=count;
+  if(btn){btn.disabled=(count===0);btn.textContent=count>0?'🛒 Ver carrito ('+count+')':'🛒 Carrito vacío';}
+}
+
+// Cart
+function openCart(){
+  if(!cart.length){showToast('El carrito está vacío');return;}
+  renderCartModal();
+  document.getElementById('modal-cart').classList.remove('hidden');
+}
+
+function renderCartModal(){
+  const title=document.getElementById('cart-modal-title');
+  if(title&&activeClient) title.textContent='🛒 '+activeClient.name;
+
+  const list=document.getElementById('cart-items-list');
+  list.innerHTML=cart.map(function(item,i){
+    return '<div class="cart-row">'+
+      '<div class="cart-prod-name">'+item.productName+'<div style="font-size:10px;color:var(--muted)">'+fmt(item.price)+' c/u</div></div>'+
+      '<div class="cart-qty-ctrl">'+
+        '<button class="cart-qty-btn" onclick="changeCartQty('+i+',-1)">−</button>'+
+        '<span class="cart-qty-num">'+item.qty+'</span>'+
+        '<button class="cart-qty-btn" onclick="changeCartQty('+i+',1)">+</button>'+
+      '</div>'+
+      '<div class="cart-item-price">'+fmt(item.price*item.qty)+'</div>'+
+      '<button class="cart-remove" onclick="removeFromCart('+i+')">✕</button>'+
+    '</div>';
+  }).join('');
+
+  const total=cart.reduce(function(a,i){return a+i.price*i.qty;},0);
+  const el=document.getElementById('cart-total-display');
+  if(el) el.textContent=fmt(total);
+}
+
+function changeCartQty(idx,delta){
+  if(!cart[idx])return;
+  const p=products.find(x=>x.id===cart[idx].productId);
+  const maxStock=(p?p.stock:99)+cart[idx].qty;
+  cart[idx].qty=Math.max(1,Math.min(maxStock,cart[idx].qty+delta));
+  renderCartModal();
+  updateCartBadge();
+}
+
+function removeFromCart(idx){
+  cart.splice(idx,1);
+  if(!cart.length){closeModal('modal-cart');}
+  else renderCartModal();
+  updateCartBadge();
+}
+
+async function finalizeCart(){
+  if(!cart.length||!activeClient){showToast('Carrito vacío o sin cliente',true);return;}
+  closeModal('modal-cart');
+  showToast('⏳ Guardando '+cart.length+' producto(s)...');
+
+  for(const item of cart){
+    const saleData={
+      productId:item.productId, productName:item.productName,
+      category:item.category, price:item.price, cost:item.cost,
+      qty:item.qty, total:item.price*item.qty,
+      user:currentUser, buyer:activeClient.name,
+      cedula:activeClient.phone, notes:item.notes||'',
+      clientId:activeClient.id, timestamp:new Date().toISOString()
+    };
+    const saleId='SL-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,5);
+    const p=products.find(x=>x.id===item.productId);
+    if(p){p.stock=Math.max(0,p.stock-item.qty);p.sold=(p.sold||0)+item.qty;}
+    sales.unshift({...saleData,id:saleId});
+    try{
+      await fbAdd('sales',{...saleData,localId:saleId});
+      if(p) await fbUpdate('products',item.productId,{stock:p.stock,sold:p.sold});
+    }catch(e){console.warn('FB:',e);}
+  }
+
+  // Update client total
+  const cartTotal=cart.reduce(function(a,i){return a+i.price*i.qty;},0);
+  if(activeClient){
+    activeClient.totalSpent=(activeClient.totalSpent||0)+cartTotal;
+    const idx=allClients.findIndex(c=>c.id===activeClient.id);
+    if(idx>=0) allClients[idx].totalSpent=activeClient.totalSpent;
+    try{await fbUpdate('clients',activeClient.id,{totalSpent:activeClient.totalSpent});}catch(e){}
+  }
+
+  const total=cartTotal;
+  cart=[];
+  updateCartBadge();
+  renderAll();
+  showToast('✓ Compra finalizada · '+fmt(total));
+}
+
+async function loadAllClients(){
+  try{
+    const url='https://firestore.googleapis.com/v1/projects/evento-my/databases/(default)/documents/clients?key=AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s&pageSize=500';
+    const r=await fetch(url);
+    if(!r.ok)return;
+    const data=await r.json();
+    function fv(v){if(!v)return'';if(v.stringValue!==undefined)return v.stringValue;if(v.doubleValue!==undefined)return v.doubleValue;if(v.integerValue!==undefined)return parseInt(v.integerValue);return'';}
+    allClients=(data.documents||[]).map(d=>{
+      const f=d.fields||{};
+      return{id:d.name.split('/').pop(),name:fv(f.name),phone:fv(f.phone),totalSpent:fv(f.totalSpent)||0,createdAt:fv(f.createdAt)};
+    }).sort(function(a,b){return b.totalSpent-a.totalSpent;});
+    // Also build from existing sales if no clients yet
+    if(!allClients.length){
+      const byPhone={};
+      sales.forEach(s=>{if(s.buyer){const k=s.cedula||s.buyer;if(!byPhone[k])byPhone[k]={id:'CLT-'+k.replace(/\W/g,''),name:s.buyer,phone:s.cedula||'',totalSpent:0};byPhone[k].totalSpent+=s.total;}});
+      allClients=Object.values(byPhone);
+    }
+  }catch(e){console.warn('loadClients:',e);}
+}
+
 function login(user){
   currentUser=user;
   document.getElementById('login-screen').classList.add('hidden');
@@ -759,57 +985,24 @@ function login(user){
   const glamMgnCol=document.getElementById('glam-mgn-col');
   if(glamMgnBadge)glamMgnBadge.style.display=user==='Yamile'?'block':'none';
   if(glamMgnCol)glamMgnCol.style.display=user==='Yamile'?'':'none';
-  // Start with catalog, Firebase will override via poll
   products=getInitialProducts();
   sales=[];
+  cart=[];
+  activeClient=null;
+  document.getElementById('active-client-bar').style.display='block';
   renderAll();
   startListeners();
+  loadAllClients();
 }
-function logout(){currentUser=null;document.getElementById('login-screen').classList.remove('hidden');sessionBuyer={name:'',cedula:''};buyerAsked=false;updateBuyerBar();}
+function logout(){currentUser=null;document.getElementById('login-screen').classList.remove('hidden');activeClient=null;cart=[];document.getElementById('active-client-bar').style.display='none';}
 
-function saveBuyer(){
-  const name=document.getElementById('buyer-name-input').value.trim();
-  const cedula=document.getElementById('buyer-cedula-input').value.trim();
-  if(!name&&!cedula){skipBuyer();return;}
-  sessionBuyer={name,cedula};
-  closeModal('modal-buyer');
-  updateBuyerBar();
-  // Retroactively update last saved sale with buyer info
-  if(sales.length>0){
-    const last=sales[0];
-    if(!last.buyer){
-      last.buyer=name;last.cedula=cedula;
-      const st=lGet();if(st.sales&&st.sales[0]){st.sales[0].buyer=name;st.sales[0].cedula=cedula;lSave(st);}
-      try{fbUpdate('sales',last.id,{buyer:name,cedula});}catch(e){}
-    }
-  }
-  showToast('✓ Comprador guardado: '+name);
-  renderAll();
-}
 
-function skipBuyer(){
-  closeModal('modal-buyer');
-  if(!sessionBuyer.name)sessionBuyer={name:'',cedula:''};
-}
 
-function clearBuyer(){
-  sessionBuyer={name:'',cedula:''};buyerAsked=false;
-  updateBuyerBar();
-  document.getElementById('buyer-name-input').value='';
-  document.getElementById('buyer-cedula-input').value='';
-  showToast('Comprador eliminado');
-}
 
-function updateBuyerBar(){
-  const bar=document.getElementById('buyer-session-bar');
-  const lbl=document.getElementById('buyer-session-label');
-  if(sessionBuyer.name&&bar&&lbl){
-    bar.style.display='flex';bar.style.alignItems='center';bar.style.justifyContent='space-between';
-    lbl.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · '+sessionBuyer.cedula:'');
-  } else if(bar){
-    bar.style.display='none';
-  }
-}
+
+
+
+
 function openModule(url){window.open(url,'_blank');}
 
 // ── FIREBASE LISTENERS ───────────────────────
@@ -1190,25 +1383,24 @@ function renderAdmin(){
 
 // ── SELL MODAL ────────────────────────────────
 function openSell(id){
+  if(!activeClient){
+    openClientModal();
+    showToast('Selecciona un cliente primero');
+    return;
+  }
   const p=products.find(x=>x.id===id);if(!p)return;
   currentSellId=id;sellQty=1;
   document.getElementById('sell-qty').textContent=1;
   document.getElementById('sell-price').value=p.price;
   document.getElementById('sell-notes').value='';
-  // Build info without nested template literals
   const glamNote=(isGlam(p)&&p.originalPrice)?' (público: '+fmt(p.originalPrice)+')':'';
   document.getElementById('sell-info').innerHTML=
     '<div class="info-row"><strong>Producto</strong>'+p.name+'</div>'+
     '<div class="info-row"><strong>Stock</strong>'+stockBadge(p.stock)+'</div>'+
-    '<div class="info-row"><strong>Precio</strong>'+fmt(p.price)+glamNote+'</div>';
-  // Show active buyer if set
+    '<div class="info-row"><strong>Precio</strong>'+fmt(p.price)+glamNote+'</div>'+
+    '<div class="info-row"><strong>Cliente</strong><span style="color:var(--primary);font-weight:600">'+activeClient.name+'</span></div>';
   const buyerBar=document.getElementById('sell-buyer-bar');
-  if(sessionBuyer.name){
-    buyerBar.style.display='block';
-    buyerBar.textContent='👤 '+sessionBuyer.name+(sessionBuyer.cedula?' · '+sessionBuyer.cedula:'');
-  } else {
-    buyerBar.style.display='none';
-  }
+  if(buyerBar) buyerBar.style.display='none';
   updatePreview();
   document.getElementById('modal-sell').classList.remove('hidden');
 }
@@ -1224,24 +1416,17 @@ async function confirmSale(){
   if(!p||p.stock<sellQty){showToast('Stock insuficiente',true);return;}
   const price=parseFloat(document.getElementById('sell-price').value)||p.price;
   const notes=document.getElementById('sell-notes').value.trim();
-  const saleData={productId:p.id,productName:p.name,category:p.category,price,cost:p.cost,qty:sellQty,total:price*sellQty,user:currentUser,buyer:sessionBuyer.name,cedula:sessionBuyer.cedula,notes,timestamp:new Date().toISOString()};
-  // Save locally first
-  const saleId=Date.now().toString();
-  const mp=products.find(x=>x.id===p.id);
-  if(mp){mp.stock-=sellQty;mp.sold=(mp.sold||0)+sellQty;}
-  sales.unshift({...saleData,id:saleId});
-  const st=lGet();
-  const lp=st.products?.find(x=>x.id===p.id);
-  if(lp){lp.stock-=sellQty;lp.sold=(lp.sold||0)+sellQty;}
-  st.sales=[...sales];lSave(st);
+  // Add to cart instead of saving immediately
+  const existing=cart.find(i=>i.productId===p.id&&i.price===price);
+  if(existing){existing.qty+=sellQty;}
+  else{cart.push({productId:p.id,productName:p.name,category:p.category,price,cost:p.cost,qty:sellQty,notes});}
   closeModal('modal-sell');
-  showToast('✓ Venta registrada · '+fmt(price*sellQty));
+  updateCartBadge();
+  const cartTotal=cart.reduce(function(a,i){return a+i.price*i.qty;},0);
+  showToast('✓ '+p.name+' al carrito · Total: '+fmt(cartTotal));
   renderAll();
-  // Ask for buyer once per session if not asked yet
-  if(!buyerAsked){buyerAsked=true;setTimeout(()=>document.getElementById('modal-buyer').classList.remove('hidden'),400);}
-  // Firebase background sync
-  try{await Promise.all([fbAdd('sales',{...saleData,localId:saleId}),fbUpdate('products',p.id,{stock:mp?mp.stock:p.stock-sellQty,sold:mp?mp.sold:(p.sold||0)+sellQty})]);}catch(e){console.warn('Firebase sync:',e.message);}
 }
+
 
 // ── EDIT ─────────────────────────────────────
 function openEdit(id){
