@@ -960,9 +960,15 @@ async function openClientModal(){
 function searchClients(q){
   const list=document.getElementById('client-search-list');
   q=(q||'').toLowerCase().trim();
-  const matches=allClients.filter(c=>
-    !q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)
-  ).slice(0,8);
+  const seen2=new Set();
+  const deduped2=allClients.filter(function(c){
+    const nk=c.name.trim().toLowerCase().replace(/\s+/g,' ');
+    if(seen2.has(nk)) return false;
+    seen2.add(nk); return true;
+  });
+  const matches=deduped2.filter(function(c){
+    return !q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q);
+  }).slice(0,8);
 
   if(!matches.length){
     list.innerHTML='<div style="text-align:center;color:var(--muted);padding:12px;font-size:13px">'+(q?'Sin resultados para "'+q+'"':'No hay clientes aún — crea uno abajo')+'</div>';
@@ -1149,9 +1155,16 @@ async function startNewSale(){
 function searchClientsNS(q){
   const list=document.getElementById('ns-client-list');
   q=(q||'').toLowerCase().trim();
-  const matches=allClients.filter(c=>
-    !q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)
-  ).slice(0,6);
+  // Deduplicate by normalized name before showing
+  const seen=new Set();
+  const deduped=allClients.filter(function(c){
+    const nk=c.name.trim().toLowerCase().replace(/\s+/g,' ');
+    if(seen.has(nk)) return false;
+    seen.add(nk); return true;
+  });
+  const matches=deduped.filter(function(c){
+    return !q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q);
+  }).slice(0,6);
   if(!matches.length){
     list.innerHTML='<div style="text-align:center;color:var(--muted);padding:10px;font-size:13px">'+(q?'Sin resultados':'No hay clientes aún')+'</div>';
     return;
@@ -1222,21 +1235,28 @@ async function loadAllClients(){
       if(!phoneMap[key]||c.totalSpent>phoneMap[key].totalSpent) phoneMap[key]=c;
     });
     allClients=Object.values(phoneMap).sort(function(a,b){return b.totalSpent-a.totalSpent;});
-    // ALWAYS merge with sales-inferred clients (covers buyers before client system)
-    const existingIds=new Set(allClients.map(function(c){return c.id;}));
-    const byPhone={};
+    // Merge with sales-inferred clients — skip if name or phone already in Firebase
+    const VENDOR_PHONES = new Set(['3108051223','3212002456','573108051223','573212002456']);
+    const existingNames = new Set(allClients.map(function(c){return c.name.trim().toLowerCase().replace(/\s+/g,' ');}));
+    const existingPhones = new Set(allClients.map(function(c){return (c.phone||'').replace(/\D/g,'').slice(-10);}));
+    const byName = {};
     sales.forEach(function(s){
-      if(s.buyer){
-        const ph=(s.cedula||'').replace(/\D/g,'');
-        const k=ph||s.buyer;
-        const syntheticId='CLT-SYN-'+k.replace(/\W/g,'').slice(0,12);
-        if(!existingIds.has(syntheticId)&&!existingIds.has(s.clientId||'')){
-          if(!byPhone[k])byPhone[k]={id:syntheticId,name:s.buyer,phone:s.cedula||'',totalSpent:0};
-          byPhone[k].totalSpent+=s.total;
-        }
+      if(!s.buyer) return;
+      const nameKey = s.buyer.trim().toLowerCase().replace(/\s+/g,' ');
+      const ph = (s.cedula||'').replace(/\D/g,'').slice(-10);
+      // Skip if name already in Firebase clients
+      if(existingNames.has(nameKey)) return;
+      // Skip if phone is a vendor phone
+      if(ph && VENDOR_PHONES.has(ph)) return;
+      // Skip if phone already in Firebase clients
+      if(ph && existingPhones.has(ph)) return;
+      if(!byName[nameKey]){
+        byName[nameKey]={id:'CLT-SYN-'+nameKey.replace(/\W/g,'').slice(0,12),name:s.buyer.trim(),phone:ph||'',totalSpent:0};
       }
+      if(ph) byName[nameKey].phone=ph;
+      byName[nameKey].totalSpent+=s.total;
     });
-    const synthetic=Object.values(byPhone);
+    const synthetic=Object.values(byName);
     allClients=allClients.concat(synthetic).sort(function(a,b){return b.totalSpent-a.totalSpent;});
   }catch(e){console.warn('loadClients:',e);}
 }
@@ -2041,28 +2061,38 @@ let cachedLeads = [];
 async function renderClientes() {
   const qName = (document.getElementById('cli-search-name')?.value||'').toLowerCase().trim();
   const qPhone = (document.getElementById('cli-search-phone')?.value||'').trim();
-  // Load leads from Skin Analyzer
   if (!cachedLeads.length) cachedLeads = await loadLeads();
-  // Group sales by client
+  if (!allClients.length) await loadAllClients();
+
+  // Build map grouped by normalized name
   const byClient = {};
-  sales.forEach(s => {
-    const key = (s.buyer||'Sin nombre') + '||' + (s.cedula||s.phone||'');
-    if (!byClient[key]) byClient[key] = {
-      name: s.buyer||'Sin nombre',
-      phone: s.cedula||s.phone||'',
-      sales: [], total: 0
-    };
-    byClient[key].sales.push(s);
-    byClient[key].total += s.total;
+
+  // Seed with Firebase clients
+  allClients.forEach(function(c){
+    const nk=c.name.trim().toLowerCase().replace(/\s+/g,' ');
+    if(!byClient[nk]) byClient[nk]={key:nk,name:c.name.trim(),phone:c.phone||'',sales:[],total:0,productos:[],clientId:c.id};
   });
 
+  // Attach sales by name match
+  sales.forEach(function(s){
+    if(!s.buyer) return;
+    const nk=s.buyer.trim().toLowerCase().replace(/\s+/g,' ');
+    if(!byClient[nk]) byClient[nk]={key:nk,name:s.buyer.trim(),phone:s.cedula||'',sales:[],total:0,productos:[],clientId:s.clientId||''};
+    byClient[nk].sales.push(s);
+    if(s.productName && !byClient[nk].productos.includes(s.productName)) byClient[nk].productos.push(s.productName);
+    if(!byClient[nk].phone && s.cedula) byClient[nk].phone=s.cedula;
+  });
+  // Recalculate totals from actual sales
+  Object.values(byClient).forEach(function(c){
+    if(c.sales.length) c.total=c.sales.reduce(function(a,x){return a+x.total;},0);
+  });
   const clients = Object.values(byClient)
-    .filter(c => {
+    .filter(function(c){
       if(qName && !c.name.toLowerCase().includes(qName)) return false;
       if(qPhone && !(c.phone||'').includes(qPhone)) return false;
       return true;
     })
-    .sort((a,b) => b.total - a.total);
+    .sort(function(a,b){return b.total-a.total;});
 
   const div = document.getElementById('clientes-list');
   if (!div) return;
