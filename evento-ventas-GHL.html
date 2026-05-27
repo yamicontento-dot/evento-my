@@ -823,68 +823,74 @@ function getInitialProducts() {
     F('Primer de Sombras Farmasi',           'FAR-PS-001',  50000, 'Maquillaje', 'Base sombras'),
 
   ].concat((() => {
-    const G = (name, id, originalPrice, discountPct, qty, category, presentation='') => {
-      const price = Math.round(originalPrice * (1 - discountPct/100));
-      const cost = Math.round(price * 0.34);
-      return { id, name, ref: id, price, originalPrice, discountPct, cost, margin: 66,
-        category, presentation, stock: qty, sold: 0, active: true };
+    // G_r: name, id, cost, listPrice, salePrice, qty, category, presentation
+    const G_r = (name, id, cost, listPrice, salePrice, qty, category, pres='') => {
+      const margin = Math.round((salePrice - cost) / salePrice * 100);
+      return { id, name, ref: id, price: salePrice, originalPrice: listPrice,
+        cost, margin, category, presentation: pres,
+        stock: qty, sold: 0, active: true };
     };
     return [
-        // ── MAC: BASE FLUIDA Studio Fix Fluid SPF15 ─────────────
-        G('MAC Studio Fix Fluid NW18',    'GLAM-MAC-NW18',  205000, 50, 3, 'GLAM MAC', '30ml · Base fluida'),
-        G('MAC Studio Fix Fluid NW20',    'GLAM-MAC-NW20',  205000, 50, 2, 'GLAM MAC', '30ml · Base fluida'),
-        G('MAC Studio Fix Fluid C4.5',    'GLAM-MAC-C45',   205000, 50, 4, 'GLAM MAC', '30ml · Base fluida'),
+      // ── MAC: BASES FLUIDAS Studio Fix Fluid SPF15 ───────────────
+      G_r('MAC Studio Fix Fluid NW18',    'GLAM-MAC-NW18',  53300, 204900, 102450, 3, 'GLAM MAC', '30ml · Base fluida'),
+      G_r('MAC Studio Fix Fluid NW20',    'GLAM-MAC-NW20',  87900, 204900, 102450, 2, 'GLAM MAC', '30ml · Base fluida'),
+      G_r('MAC Studio Fix Fluid C4.5',    'GLAM-MAC-C45',   87900, 204900, 102450, 4, 'GLAM MAC', '30ml · Base fluida'),
 
-        // ── MAC: POLVOS Studio Fix Powder Plus ──────────────────
-        G('MAC Studio Fix Powder NW35',   'GLAM-MAC-PNW35', 219900, 60, 3, 'GLAM MAC', '15g · Polvo compacto'),
-        G('MAC Studio Fix Powder C3.5',   'GLAM-MAC-PC35',  219900, 60, 3, 'GLAM MAC', '15g · Polvo compacto'),
+      // ── MAC: POLVOS Studio Fix Powder Plus Foundation ────────────
+      G_r('MAC Studio Fix Powder NW35',   'GLAM-MAC-PNW35', 53300, 219900, 87960, 3, 'GLAM MAC', '15g · Polvo compacto'),
+      G_r('MAC Studio Fix Powder C3.5',   'GLAM-MAC-PC35',  53300, 219900, 87960, 3, 'GLAM MAC', '15g · Polvo compacto'),
 
-        // ── MAC: RUBORES Powder Blush ────────────────────────────
-        G('MAC Powder Blush Blushbaby',   'GLAM-MAC-BB',    159900, 60, 2, 'GLAM MAC', 'Rubor · Blushbaby'),
-        G('MAC Sheertone Blush Blushbaby','GLAM-MAC-SBB',   159900, 60, 1, 'GLAM MAC', 'Rubor · Blushbaby'),
-        G('MAC Powder Blush Mocha',       'GLAM-MAC-BM',    159900, 60, 1, 'GLAM MAC', 'Rubor · Mocha'),
-        G('MAC Sheertone Blush Fleur Power','GLAM-MAC-BFP', 159900, 60, 1, 'GLAM MAC', 'Rubor · Fleur Power'),
+      // ── MAC: RUBORES ─────────────────────────────────────────────
+      G_r('MAC Sheertone Blush Blushbaby','GLAM-MAC-BB',    41600, 159900, 63960, 2, 'GLAM MAC', 'Rubor · Blushbaby'),
+      G_r('MAC Powder Blush Mocha',       'GLAM-MAC-BM',    41600, 159900, 63960, 1, 'GLAM MAC', 'Rubor · Mocha'),
+      G_r('MAC Powder Blush Fleur Power', 'GLAM-MAC-BFP',   41600, 159900, 63960, 1, 'GLAM MAC', 'Rubor · Fleur Power'),
 
-        // ── MAC: ILUMINADOR Extra Dimension Skinfinish ──────────
-        G('MAC Extra Dimension Skinfinish', 'GLAM-MAC-EDS', 225000, 60, 2, 'GLAM MAC', '9g · Iluminador'),
+      // ── MAC: ILUMINADOR Extra Dimension Skinfinish ───────────────
+      G_r('MAC Extra Dimension Skinfinish Beaming Blush','GLAM-MAC-EDS', 54600, 225000, 90000, 2, 'GLAM MAC', '9g · Iluminador'),
 
-        // ── MAC: LABIALES Powder Kiss ────────────────────────────
-        G('MAC Powder Kiss Red Rock 640',    'GLAM-MAC-LRR', 135000, 60, 1, 'GLAM MAC', 'Labial matte · Red Rock'),
-        G('MAC Powder Kiss Style Shocked 303','GLAM-MAC-LSS',135000, 60, 2, 'GLAM MAC', 'Labial matte · Style Shocked'),
-        G('MAC Powder Kiss Sheer Outrage 928','GLAM-MAC-LSO',135000, 60, 2, 'GLAM MAC', 'Labial semimatte · Sheer Outrage'),
-        G('MAC Powder Kiss Devoted to Chili 316','GLAM-MAC-LDC',135000, 60, 1, 'GLAM MAC', 'Labial matte · Devoted to Chili'),
+      // ── MAC: LABIALES ────────────────────────────────────────────
+      G_r('MAC Powder Kiss 316 Devoted to Chili',  'GLAM-MAC-LDC', 37500, 135000, 54000, 1, 'GLAM MAC', 'Labial · Devoted to Chili'),
+      G_r('MAC Matte Lipstick 640 Red Rock',        'GLAM-MAC-LRR', 26000, 135000, 54000, 1, 'GLAM MAC', 'Labial matte · Red Rock'),
+      G_r('MAC Powder Kiss 303 Style Shocked',      'GLAM-MAC-LSS', 32500, 135000, 54000, 2, 'GLAM MAC', 'Labial · Style Shocked'),
+      G_r('MAC Powder Kiss 928 Sheer Outrage',      'GLAM-MAC-LSO', 32500, 135000, 54000, 2, 'GLAM MAC', 'Labial · Sheer Outrage'),
+      G_r('MAC Retro Matte 703 Runway Hit',         'GLAM-MAC-LRH', 26000, 135000, 54000, 1, 'GLAM MAC', 'Labial retro matte · Runway Hit'),
+      G_r('MAC Retro Matte 702 Dangerous',          'GLAM-MAC-LDG', 26000, 135000, 54000, 1, 'GLAM MAC', 'Labial retro matte · Dangerous'),
 
-        // ── MAC: LÁPIZ DE OJOS ───────────────────────────────────
-        G('MAC Eye Pencil Coffee',        'GLAM-MAC-EPC',   114900, 60, 2, 'GLAM MAC', 'Lápiz ojos · Coffee'),
+      // ── MAC: LÁPIZ DE OJOS ───────────────────────────────────────
+      G_r('MAC Eye Pencil Coffee',        'GLAM-MAC-EPC',   23700, 114900, 45960, 2, 'GLAM MAC', 'Lápiz ojos · Coffee'),
 
-        // ── MAC: MÁSCARA ─────────────────────────────────────────
-        G('MAC Stack Mascara Mega Brush', 'GLAM-MAC-MST',   62000,  50, 1, 'GLAM MAC', '3ml · Lavable micro'),
+      // ── MAC: MÁSCARA Stack Mega Brush ────────────────────────────
+      G_r('MAC Stack Mascara Mega Brush', 'GLAM-MAC-MST',   26000, 62000,  31000, 1, 'GLAM MAC', '3ml · Lavable'),
 
-        // ── MAC: FIJADOR ─────────────────────────────────────────
-        G('MAC Fix+ Fijador de Maquillaje','GLAM-MAC-FIX',  55000,  40, 1, 'GLAM MAC', 'Spray fijador'),
+      // ── MAC: FIJADOR Fix+ ────────────────────────────────────────
+      G_r('MAC Fix+ Fijador de Maquillaje','GLAM-MAC-FIX',  29900, 55000,  33000, 1, 'GLAM MAC', '13ml · Spray fijador'),
 
-        // ── CLINIQUE: BASE Beyond Perfecting ────────────────────
-        G('Clinique Beyond Perfecting CN52 Neutral','GLAM-CLIN-BP52', 209900, 60, 1, 'GLAM Clinique', 'Base+corrector · CN52 Neutral'),
-        G('Clinique Beyond Perfecting CN70 Vanilla','GLAM-CLIN-BP70', 209900, 60, 4, 'GLAM Clinique', 'Base+corrector · CN70 Vanilla'),
+      // ── CLINIQUE: BASES Beyond Perfecting ───────────────────────
+      G_r('Clinique Beyond Perfecting CN52 Neutral', 'GLAM-CLIN-BP52', 60000, 209900, 83960, 1, 'GLAM Clinique', '30ml · Base+corrector CN52'),
+      G_r('Clinique Beyond Perfecting CN70 Vanilla', 'GLAM-CLIN-BP70', 60000, 209900, 83960, 4, 'GLAM Clinique', '30ml · Base+corrector CN70'),
 
-        // ── CLINIQUE: LÁPIZ OJOS Cream Shaper ───────────────────
-        G('Clinique Cream Shaper for Eyes Black Diamond','GLAM-CLIN-CS', 115000, 60, 3, 'GLAM Clinique', 'Lápiz cremoso · Black Diamond'),
+      // ── CLINIQUE: LÁPIZ OJOS Cream Shaper ───────────────────────
+      G_r('Clinique Cream Shaper Black Diamond','GLAM-CLIN-CS', 24700, 125000, 50000, 3, 'GLAM Clinique', '1.2g · Lápiz cremoso'),
 
-        // ── CLINIQUE: MÁSCARA ────────────────────────────────────
-        G('Clinique High Impact Mascara Black','GLAM-CLIN-MSC', 137000, 60, 1, 'GLAM Clinique', 'Máscara extensión visible'),
+      // ── CLINIQUE: MÁSCARA Lash Power ────────────────────────────
+      G_r('Clinique Lash Power Mascara Black Onyx','GLAM-CLIN-MSC', 29900, 137000, 54800, 1, 'GLAM Clinique', '6ml · Extensión visible'),
 
-        // ── CLINIQUE: OTROS ──────────────────────────────────────
-        G('Clinique Moisture Surge Face Spray','GLAM-CLIN-MS', 139900, 60, 1, 'GLAM Clinique', 'Bruma hidratante'),
-        G('Clinique Rinse-Off Eye Makeup Solvent','GLAM-CLIN-DM', 125000, 60, 1, 'GLAM Clinique', 'Desmaquillante ojos'),
-        G('Clinique Plumón Delineador Expresso','GLAM-CLIN-DEL', 126900, 40, 1, 'GLAM Clinique', 'Delineador líquido · Expresso'),
+      // ── CLINIQUE: DELINEADOR High Impact ────────────────────────
+      G_r('Clinique High Impact Liner 03 Expresso','GLAM-CLIN-DEL', 29900, 136100, 81660, 1, 'GLAM Clinique', 'Delineador líquido · Expresso'),
 
-        // ── ESTÉE LAUDER: LÁPIZ LABIOS ───────────────────────────
-        G('Estée Lauder Double Wear Lip Pencil Apple Cordial','GLAM-EL-LP', 151100, 60, 1, 'GLAM Estee Lauder', 'Lápiz labios · Apple Cordial'),
+      // ── CLINIQUE: BRUMA HIDRATANTE ───────────────────────────────
+      G_r('Clinique Moisture Surge Face Spray','GLAM-CLIN-MS', 42000, 139900, 55960, 1, 'GLAM Clinique', '125ml · Bruma hidratante'),
 
-        // ── FARMASI GLAM: Concealer ──────────────────────────────
-        G('Farmasi VFX Pro Liquid Concealer 04','GLAM-FAR-CON04', 49500, 50, 1, 'GLAM Farmasi', '6ml · Corrector líquido'),
-        G('Farmasi Eye Pencil Burgundy 09','GLAM-FAR-EP09', 41500, 50, 1, 'GLAM Farmasi', 'Lápiz ojos · Burgundy'),
-        G('Farmasi Matte Liquid Lipstick 08 Sunset Breeze','GLAM-FAR-LL08', 61800, 50, 1, 'GLAM Farmasi', '4ml · Sunset Breeze'),
+      // ── CLINIQUE: DESMAQUILLANTE ─────────────────────────────────
+      G_r('Clinique Rinse-Off Eye Makeup Solvent','GLAM-CLIN-DM', 39900, 114900, 45960, 1, 'GLAM Clinique', '125ml · Desmaquillante ojos'),
+
+      // ── ESTÉE LAUDER: LÁPIZ LABIOS ───────────────────────────────
+      G_r('Estée Lauder Double Wear Lip Pencil 06 Apple Cordial','GLAM-EL-LP', 36100, 151100, 60440, 1, 'GLAM Estee Lauder', '1.2g · Lápiz labios Apple Cordial'),
+
+      // ── FARMASI GLAM ─────────────────────────────────────────────
+      G_r('Farmasi VFX Pro Liquid Concealer 04','GLAM-FAR-CON04', 34650, 49500, 24750, 1, 'GLAM Farmasi', '6ml · Corrector líquido'),
+      G_r('Farmasi Eye Pencil 09 Burgundy',    'GLAM-FAR-EP09', 56000, 80000, 40000, 1, 'GLAM Farmasi', 'Lápiz ojos · Burgundy'),
+      G_r('Farmasi Matte Liquid Lipstick 08 Sunset Breeze','GLAM-FAR-LL08', 43260, 61800, 30900, 1, 'GLAM Farmasi', '4ml · Sunset Breeze'),
     ];
   })());
 }
