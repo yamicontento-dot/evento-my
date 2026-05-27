@@ -528,7 +528,7 @@ main {
 <div class="loading-screen" id="loading-section">
   <div class="loading-spinner"></div>
   <div class="loading-text">Analizando tu piel...</div>
-  <div class="loading-sub">Preparando tu rutina personalizada DR C TUNA</div>
+  <div class="loading-sub">🎨 Analizando colorimetría y preparando tu rutina personalizada</div>
 </div>
 
 <!-- RESULTS -->
@@ -560,7 +560,8 @@ const QUESTIONS = [
       { icon: '⚖️', label: 'Zona T grasa, mejillas normales', desc: 'La clásica combinación', value: 'combination' },
       { icon: '💧', label: 'Normal, sin molestias', desc: 'Bien hidratada y equilibrada', value: 'normal' },
       { icon: '🔴', label: 'Sensible / irritable', desc: 'Se enrojece fácilmente, reacciona a productos', value: 'sensitive' },
-    ]
+    ],
+    requirePhoto: true
   },
   {
     id: 'concern',
@@ -585,8 +586,7 @@ const QUESTIONS = [
       { icon: '🧴', label: 'Limpiador básico', desc: 'Solo me limpio y ya', value: 'basic' },
       { icon: '✔️', label: 'Limpiador + hidratante', desc: 'Tengo lo esencial', value: 'moderate' },
       { icon: '💫', label: 'Rutina completa', desc: 'Sérum, contorno, protector, etc.', value: 'complete' },
-    ],
-    allowPhoto: true
+    ]
   },
   {
     id: 'lifestyle',
@@ -772,17 +772,21 @@ function renderQuestion() {
   document.getElementById('prog-pct').textContent = pct + '%';
 
   let photoHTML = '';
-  if (q.allowPhoto) {
-    photoHTML = `
-      <div class="photo-section">
-        <label class="photo-label">Foto de tu piel <span class="photo-plus-badge">+ Plus</span></label>
-        <div class="photo-upload-area" onclick="triggerPhoto()">
-          <input type="file" id="photo-input" accept="image/*" capture="user" onchange="handlePhoto(event)">
-          <div class="photo-placeholder" id="photo-placeholder">📸</div>
-          <div class="photo-text" id="photo-text">Toca para tomar o subir una foto (opcional)</div>
-          <img id="photo-preview" class="photo-preview" alt="preview">
-        </div>
-      </div>`;
+  if (q.requirePhoto) {
+    const photoStatus = photoData ? 
+      '<div style="background:#f0fdf4;border:1.5px solid #68d391;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;color:#276749;margin-top:8px">✓ Foto cargada — usaremos IA para tu análisis de colorimetría</div>' :
+      '<div style="background:#fff7ed;border:1.5px solid #f6ad55;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:600;color:#744210;margin-top:8px">📸 Foto obligatoria para el análisis de colorimetría</div>';
+    photoHTML = '<div class="photo-section">' +
+      '<label class="photo-label">📸 Foto de tu rostro <span style="background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;margin-left:6px">Obligatorio</span></label>' +
+      '<p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">Necesitamos una foto de tu rostro con buena luz para analizar tu colorimetría y recomendarte los tonos de maquillaje exactos para ti.</p>' +
+      '<div class="photo-upload-area">' +
+        '<input type="file" id="photo-input" accept="image/*" capture="user" onchange="handlePhoto(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">' +
+        '<div class="photo-placeholder" id="photo-placeholder">' + (photoData ? '' : '📸') + '</div>' +
+        '<div class="photo-text" id="photo-text">' + (photoData ? '' : 'Toca para tomar foto o subir desde galería') + '</div>' +
+        '<img id="photo-preview" class="photo-preview" alt="preview" ' + (photoData ? 'src="'+photoData+'" style="display:block"' : '') + '>' +
+      '</div>' +
+      photoStatus +
+    '</div>';
   }
 
   const selected = answers[q.id];
@@ -837,6 +841,12 @@ function selectOption(qId, value, btn) {
 }
 
 function nextQuestion() {
+  const q = QUESTIONS[currentQ];
+  if (q.requirePhoto && !photoData) {
+    showToast('📸 La foto es obligatoria para el análisis de colorimetría');
+    document.getElementById('photo-input') && document.getElementById('photo-input').click();
+    return;
+  }
   if (currentQ < QUESTIONS.length - 1) {
     currentQ++;
     renderQuestion();
@@ -883,6 +893,42 @@ function getTips() {
   return TIPS[skinType] || TIPS.normal;
 }
 
+// ── COLORIMETRY via Claude API ───────────────────────────────────
+async function analyzeColorimetry(photoBase64) {
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: photoBase64.split(',')[1] }
+            },
+            {
+              type: 'text',
+              text: 'Analiza el tono de piel, el subtono (cálido, frío o neutro) y la temporada de colorimetría de la persona en esta foto. Responde SOLO con un objeto JSON sin explicación adicional ni backticks, con estos campos exactos: {"season": "Primavera|Verano|Otoño|Invierno", "undertone": "Cálido|Frío|Neutro", "skinTone": "Claro|Medio|Oscuro|Muy oscuro", "bestColors": ["color1","color2","color3","color4"], "avoidColors": ["color1","color2"], "lipColors": ["tono1","tono2","tono3"], "blushColors": ["tono1","tono2"], "eyeColors": ["tono1","tono2","tono3"], "farmasiTones": ["nombre tono Farmasi 1","nombre tono 2","nombre tono 3"], "colorTips": ["tip1","tip2","tip3"]}'
+            }
+          ]
+        }]
+      })
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const text = data.content && data.content[0] && data.content[0].text;
+    if (!text) return null;
+    const clean = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch(e) {
+    console.warn('Colorimetry API error:', e);
+    return null;
+  }
+}
+
 function saveLead(purchased) {
   if (!clientData.name || !clientData.phone) return;
   const rec = getRecommendation();
@@ -923,13 +969,19 @@ function generateResults() {
   // Save lead to Firebase (async, non-blocking)
   saveLead(false);
 
-  setTimeout(() => {
+  // Analyze colorimetry via Claude API while loading
+  let colorimetryData = null;
+  const analyzePromise = photoData ? analyzeColorimetry(photoData).then(r => { colorimetryData = r; }) : Promise.resolve();
+  
+  const minWait = new Promise(resolve => setTimeout(resolve, 2500));
+  Promise.all([analyzePromise, minWait]).then(() => {
     loading.classList.remove('active');
-    renderResults();
-  }, 2000);
+    renderResults(colorimetryData);
+  });
 }
 
-function renderResults() {
+function renderResults(colorimetry) {
+  window._lastColorimetry = colorimetry || null;
   const rec = getRecommendation();
   const makeup = getMakeup();
   const tips = getTips();
@@ -988,6 +1040,72 @@ function renderResults() {
     html += '</div>';
   });
   html += '</div></div>';
+
+  // Colorimetry card
+  if (colorimetry) {
+    const seasonColors = {
+      'Primavera': {bg:'#fff7ed',border:'#fed7aa',accent:'#ea580c',icon:'🌸'},
+      'Verano':    {bg:'#fdf4ff',border:'#e9d5ff',accent:'#9333ea',icon:'☀️'},
+      'Otoño':     {bg:'#fefce8',border:'#fde68a',accent:'#b45309',icon:'🍂'},
+      'Invierno':  {bg:'#eff6ff',border:'#bfdbfe',accent:'#1d4ed8',icon:'❄️'}
+    };
+    const sc = seasonColors[colorimetry.season] || seasonColors['Primavera'];
+    html += '<div style="background:'+sc.bg+';border:1.5px solid '+sc.border+';border-radius:16px;padding:20px;margin-bottom:20px">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">';
+    html += '<span style="font-size:28px">'+sc.icon+'</span>';
+    html += '<div><div style="font-size:17px;font-weight:700;color:'+sc.accent+'">Temporada '+colorimetry.season+'</div>';
+    html += '<div style="font-size:12px;color:var(--muted)">Subtono '+colorimetry.undertone+' · Piel '+colorimetry.skinTone+'</div></div>';
+    html += '</div>';
+
+    // Best colors
+    html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">✅ Colores que te favorecen</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
+    (colorimetry.bestColors||[]).forEach(function(c){
+      html += '<span style="background:rgba(0,0,0,.06);padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">'+c+'</span>';
+    });
+    html += '</div>';
+
+    // Makeup recommendations
+    html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">💄 Maquillaje ideal para ti</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
+    if (colorimetry.lipColors && colorimetry.lipColors.length) {
+      html += '<div style="background:rgba(0,0,0,.04);border-radius:10px;padding:10px">';
+      html += '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">💋 Labiales</div>';
+      colorimetry.lipColors.forEach(function(t){ html += '<div style="font-size:12px;font-weight:500;margin-bottom:2px">→ '+t+'</div>'; });
+      html += '</div>';
+    }
+    if (colorimetry.blushColors && colorimetry.blushColors.length) {
+      html += '<div style="background:rgba(0,0,0,.04);border-radius:10px;padding:10px">';
+      html += '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">🌸 Rubores</div>';
+      colorimetry.blushColors.forEach(function(t){ html += '<div style="font-size:12px;font-weight:500;margin-bottom:2px">→ '+t+'</div>'; });
+      html += '</div>';
+    }
+    if (colorimetry.eyeColors && colorimetry.eyeColors.length) {
+      html += '<div style="background:rgba(0,0,0,.04);border-radius:10px;padding:10px;grid-column:1/-1">';
+      html += '<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:5px">👁 Ojos</div>';
+      colorimetry.eyeColors.forEach(function(t){ html += '<div style="font-size:12px;font-weight:500;margin-bottom:2px">→ '+t+'</div>'; });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // Farmasi specific tones
+    if (colorimetry.farmasiTones && colorimetry.farmasiTones.length) {
+      html += '<div style="background:rgba(238,9,121,.06);border:1px solid rgba(238,9,121,.2);border-radius:10px;padding:12px;margin-bottom:12px">';
+      html += '<div style="font-size:11px;font-weight:700;color:#ee0979;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🎯 Tonos Farmasi recomendados para ti</div>';
+      colorimetry.farmasiTones.forEach(function(t){ html += '<div style="font-size:12px;font-weight:600;margin-bottom:3px;color:var(--ink)">✓ '+t+'</div>'; });
+      html += '</div>';
+    }
+
+    // Color tips
+    if (colorimetry.colorTips && colorimetry.colorTips.length) {
+      html += '<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">💡 Tips de colorimetría</div>';
+      colorimetry.colorTips.forEach(function(t){
+        html += '<div style="display:flex;gap:7px;font-size:12px;margin-bottom:6px;line-height:1.5"><span style="color:'+sc.accent+';font-size:14px;flex-shrink:0">→</span>'+t+'</div>';
+      });
+    }
+
+    html += '</div>';
+  }
 
   // Tips
   html += '<div class="tips-card">';
@@ -1088,6 +1206,18 @@ function shareWhatsApp() {
   const rutina = rec.skincare.map(function(p) {
     return p.step + '. ' + p.stepLabel + ': ' + p.name;
   }).join('\n');
+
+  // Get colorimetry from last result if available
+  const lastColorimetry = window._lastColorimetry;
+  const colorSection = lastColorimetry ?
+    '\n\n' +
+    '\ud83c\udfa8 *An\u00e1lisis de Colorimetr\u00eda*' +
+    '\nTemporada: *' + lastColorimetry.season + '* · Subtono ' + lastColorimetry.undertone +
+    '\n\n*Tonos Farmasi recomendados para ti:*' +
+    '\n' + (lastColorimetry.farmasiTones||[]).map(function(t){return '\u2713 '+t;}).join('\n') +
+    '\n\n*Tips de color:*' +
+    '\n' + (lastColorimetry.colorTips||[]).map(function(t){return '\u2022 '+t;}).join('\n')
+    : '';
 
   const msg = '\u2728 *Diagn\u00f3stico de piel DR C TUNA*' +
     '\n\nHola ' + (clientData.name || '') + '! \ud83c\udf38' +
