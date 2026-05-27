@@ -242,7 +242,7 @@ tr:hover td{background:#fafafa;}
 
 <!-- FIREBASE REST -->
 <script>
-const FB_API_KEY="AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s",FB_PROJECT="evento-my",FB_BASE=`https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`,POLL_MS=4000;
+const FB_API_KEY="AIzaSyACtsNdeQqDeJsFgFjgFc1z2uDJ-HxEu-s",FB_PROJECT="evento-my",FB_BASE=`https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`,POLL_MS=2000;
 function fromFB(v){if(!v)return null;if(v.stringValue!==undefined)return v.stringValue;if(v.integerValue!==undefined)return parseInt(v.integerValue);if(v.doubleValue!==undefined)return parseFloat(v.doubleValue);if(v.booleanValue!==undefined)return v.booleanValue;if(v.nullValue!==undefined)return null;if(v.timestampValue!==undefined)return v.timestampValue;if(v.mapValue){const o={};for(const[k,val]of Object.entries(v.mapValue.fields||{}))o[k]=fromFB(val);return o;}if(v.arrayValue)return(v.arrayValue.values||[]).map(fromFB);return null;}
 function toFB(v){if(v===null||v===undefined)return{nullValue:null};if(typeof v==='boolean')return{booleanValue:v};if(typeof v==='number'){if(Number.isInteger(v))return{integerValue:String(v)};return{doubleValue:v};}if(typeof v==='string')return{stringValue:v};if(v instanceof Date)return{timestampValue:v.toISOString()};if(Array.isArray(v))return{arrayValue:{values:v.map(toFB)}};if(typeof v==='object'){const f={};for(const[k,val]of Object.entries(v))f[k]=toFB(val);return{mapValue:{fields:f}};}return{stringValue:String(v)};}
 function parseDoc(doc){if(!doc.name)return null;const id=doc.name.split('/').pop();const data={};for(const[k,v]of Object.entries(doc.fields||{}))data[k]=fromFB(v);return{id,...data};}
@@ -281,7 +281,7 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
 <header>
   <div class="hbrand">M &amp; Y · Ventas</div>
   <div class="hright">
-    <span class="badge badge-live">● Live</span>
+    <span class="badge badge-live" onclick="manualSync()" style="cursor:pointer" title="Sincronizar ahora">● Live</span>
     <span class="badge badge-u" id="user-badge">—</span>
     <button class="logout-btn" onclick="logout()">Salir</button>
   </div>
@@ -1077,6 +1077,7 @@ async function finalizeCart(){
   closeModal('modal-cart');
   showToast('⏳ Guardando '+cart.length+' producto(s)...');
 
+  let anyFailed=false;
   for(const item of cart){
     const saleData={
       productId:item.productId, productName:item.productName,
@@ -1084,17 +1085,24 @@ async function finalizeCart(){
       qty:item.qty, total:item.price*item.qty,
       user:currentUser, buyer:activeClient.name,
       cedula:activeClient.phone, notes:item.notes||'',
+      payment:item.payment||'',
       clientId:activeClient.id, timestamp:new Date().toISOString()
     };
     const saleId='SL-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,5);
     const p=products.find(x=>x.id===item.productId);
     if(p){p.stock=Math.max(0,p.stock-item.qty);p.sold=(p.sold||0)+item.qty;}
     sales.unshift({...saleData,id:saleId});
-    try{
-      await fbAdd('sales',{...saleData,localId:saleId});
-      if(p) await fbUpdate('products',item.productId,{stock:p.stock,sold:p.sold});
-    }catch(e){console.warn('FB:',e);}
+    let saved=false;
+    for(let attempt=0;attempt<3&&!saved;attempt++){
+      try{
+        const ok=await fbAdd('sales',{...saleData,localId:saleId});
+        if(ok){if(p)await fbUpdate('products',item.productId,{stock:p.stock,sold:p.sold});saved=true;}
+        else{await new Promise(function(r){setTimeout(r,700);});}
+      }catch(e){await new Promise(function(r){setTimeout(r,700);});}
+    }
+    if(!saved)anyFailed=true;
   }
+  if(anyFailed)showToast('⚠️ Verifica conexión — reintenta',true);
 
   // Update client total
   const cartTotal=cart.reduce(function(a,i){return a+i.price*i.qty;},0);
@@ -1113,6 +1121,11 @@ async function finalizeCart(){
   updateCartBadge();
   renderAll();
   showToast('✓ Compra finalizada · '+fmt(total)+' · Listo para nueva venta 🛒');
+  // Force immediate sync to show on all devices
+  setTimeout(function(){
+    if(window.forcePollSales) window.forcePollSales();
+    if(window.forcePollProducts) window.forcePollProducts();
+  }, 1000);
 }
 
 // ── NEW SALE FLOW ─────────────────────────────
@@ -1197,10 +1210,18 @@ async function loadAllClients(){
     if(!r.ok)return;
     const data=await r.json();
     function fv(v){if(!v)return'';if(v.stringValue!==undefined)return v.stringValue;if(v.doubleValue!==undefined)return v.doubleValue;if(v.integerValue!==undefined)return parseInt(v.integerValue);return'';}
-    allClients=(data.documents||[]).map(d=>{
+    const rawClients=(data.documents||[]).map(d=>{
       const f=d.fields||{};
       return{id:d.name.split('/').pop(),name:fv(f.name),phone:fv(f.phone),totalSpent:fv(f.totalSpent)||0,createdAt:fv(f.createdAt)};
-    }).sort(function(a,b){return b.totalSpent-a.totalSpent;});
+    });
+    // Deduplicate by phone — keep entry with highest totalSpent
+    const phoneMap={};
+    rawClients.forEach(function(c){
+      const ph=(c.phone||'').replace(/\D/g,'').slice(-10);
+      const key=ph||c.id;
+      if(!phoneMap[key]||c.totalSpent>phoneMap[key].totalSpent) phoneMap[key]=c;
+    });
+    allClients=Object.values(phoneMap).sort(function(a,b){return b.totalSpent-a.totalSpent;});
     // ALWAYS merge with sales-inferred clients (covers buyers before client system)
     const existingIds=new Set(allClients.map(function(c){return c.id;}));
     const byPhone={};
@@ -1311,20 +1332,29 @@ async function startListeners(){
   window.forcePollProducts();
   setInterval(window.forcePollProducts,POLL_MS);
 
-  // Sales: Firebase always wins, no localStorage comparison
-  let lastSaleCount=-1;
-  const pollS=async()=>{
+  // Sales: Firebase is the only source of truth — always sync
+  let lastSalesHash='';
+  window.forcePollSales=async()=>{
     const docs=await fbList('sales','timestamp','DESCENDING');
-    if(!docs)return;
-    if(docs.length!==lastSaleCount||JSON.stringify(docs.map(d=>d.id+d.buyer+d.cedula))!==JSON.stringify(sales.map(d=>d.id+(d.buyer||'')+(d.cedula||'')))){
-      lastSaleCount=docs.length;
+    if(!docs) return;
+    // Build a hash of ALL relevant fields to detect any change
+    const hash=docs.map(function(d){
+      return d.id+'|'+(d.total||0)+'|'+(d.buyer||'')+'|'+(d.payment||'');
+    }).join(';;');
+    if(hash!==lastSalesHash){
+      lastSalesHash=hash;
       sales=docs;
       flashLive();
-      if(currentUser)renderAll();
+      if(currentUser) renderAll();
     }
   };
-  pollS();
-  setInterval(pollS,POLL_MS);
+  window.forcePollSales();
+  setInterval(window.forcePollSales,POLL_MS);
+}
+function manualSync(){
+  showToast('⟳ Sincronizando...');
+  if(window.forcePollProducts) window.forcePollProducts();
+  if(window.forcePollSales) window.forcePollSales();
 }
 function flashLive(){const e=document.getElementById('live-ind');e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500);}
 
