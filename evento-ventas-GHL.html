@@ -319,7 +319,12 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
 <!-- VENDER -->
 <div class="tab-content active" id="tab-ventas">
   <div class="kpi-grid" id="kpi-grid"></div>
-  <div class="sec-header"><div class="sec-title">Registrar Venta</div></div>
+  <div class="sec-header">
+    <div class="sec-title">Registrar Venta</div>
+    <button class="btn-primary" onclick="startNewSale()" style="padding:8px 16px;font-size:13px">
+      🛒 Nueva Venta
+    </button>
+  </div>
   <div class="filters">
     <input class="search-input" id="sv-search" placeholder="🔍 Buscar producto..." oninput="renderVentas()">
     <select class="filter-select" id="sv-cat" onchange="renderVentas()">
@@ -369,8 +374,28 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
 <div class="tab-content" id="tab-historial">
   <div class="sec-header">
     <div class="sec-title">Historial de Ventas</div>
-    <button class="btn-primary" onclick="exportCSV()">⬇ Excel</button>
+    <button class="btn-primary" onclick="exportCSV()" style="padding:7px 12px;font-size:12px">⬇ Excel</button>
   </div>
+  <div class="filters" style="flex-wrap:wrap;gap:7px">
+    <input class="search-input" id="h-client" placeholder="👤 Cliente..." oninput="renderHistorial()" style="min-width:120px;flex:1">
+    <input class="search-input" id="h-product" placeholder="📦 Producto..." oninput="renderHistorial()" style="min-width:120px;flex:1">
+    <select class="filter-select" id="h-payment" onchange="renderHistorial()">
+      <option value="">💳 Pago: Todos</option>
+      <option value="efectivo">Efectivo</option>
+      <option value="transferencia">Transferencia</option>
+      <option value="nequi">Nequi</option>
+      <option value="daviplata">Daviplata</option>
+      <option value="tarjeta">Tarjeta</option>
+    </select>
+    <select class="filter-select" id="h-date" onchange="renderHistorial()">
+      <option value="">📅 Fecha: Todas</option>
+      <option value="2026-05-25">Lun 25</option>
+      <option value="2026-05-26">Mar 26</option>
+      <option value="2026-05-27">Mié 27</option>
+    </select>
+    <button class="btn-cancel" onclick="clearHistFilters()" style="padding:7px 10px;font-size:12px;white-space:nowrap">✕ Limpiar</button>
+  </div>
+  <div class="kpi-grid" id="h-totals" style="margin-bottom:12px;grid-template-columns:repeat(3,1fr)"></div>
   <div id="historial-list"></div>
 </div>
 
@@ -435,8 +460,9 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
   <div class="sec-header">
     <div class="sec-title">Clientes & Seguimiento</div>
   </div>
-  <div class="filters">
-    <input class="search-input" id="cli-search" placeholder="🔍 Buscar cliente..." oninput="renderClientes()">
+  <div class="filters" style="gap:8px">
+    <input class="search-input" id="cli-search-name" placeholder="🔍 Buscar por nombre..." oninput="renderClientes()" style="flex:1">
+    <input class="search-input" id="cli-search-phone" placeholder="📱 Buscar por teléfono..." oninput="renderClientes()" type="tel" inputmode="numeric" style="flex:1">
   </div>
   <div id="clientes-list"></div>
 </div>
@@ -488,8 +514,18 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
     <div class="form-group"><label class="form-label">Precio de Venta</label>
       <input class="form-input" id="sell-price" type="number" oninput="updatePreview()">
     </div>
+    <div class="form-group"><label class="form-label">Tipo de pago</label>
+      <select class="form-select" id="sell-payment">
+        <option value="">Sin especificar</option>
+        <option value="efectivo">Efectivo</option>
+        <option value="transferencia">Transferencia</option>
+        <option value="nequi">Nequi</option>
+        <option value="daviplata">Daviplata</option>
+        <option value="tarjeta">Tarjeta</option>
+      </select>
+    </div>
     <div class="form-group"><label class="form-label">Notas</label>
-      <input class="form-input" id="sell-notes" placeholder="efectivo, transferencia, descuento...">
+      <input class="form-input" id="sell-notes" placeholder="Notas adicionales...">
     </div>
     <div class="preview-box" id="sell-preview"></div>
     <div id="sell-buyer-bar" style="display:none;background:var(--green-bg);border:1px solid var(--green-b);border-radius:var(--r);padding:8px 12px;font-size:12px;font-weight:600;color:var(--green);margin-top:8px"></div>
@@ -545,20 +581,76 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
         ✓ Finalizar compra
       </button>
       <button class="btn-cancel" style="width:100%;text-align:center" onclick="closeModal('modal-cart')">
-        + Agregar más productos
+        + Seguir agregando productos
+      </button>
+      <button onclick="closeSaleSession()" style="width:100%;padding:10px;border-radius:var(--r);border:1px solid #fecaca;background:#fef2f2;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;text-align:center">
+        ✕ Cerrar venta y desasociar cliente
       </button>
     </div>
   </div>
 </div>
 
 <!-- MODAL EDITAR VENTA -->
+<!-- MODAL NUEVA VENTA -->
+<div class="modal-overlay hidden" id="modal-new-sale" style="align-items:center">
+  <div class="modal" style="border-radius:20px;padding:28px 24px;max-width:380px">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:48px;margin-bottom:8px">🛒</div>
+      <div class="modal-title" style="font-size:20px;margin-bottom:6px">Nueva Venta</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.5">Selecciona el cliente para esta compra o crea uno nuevo</div>
+    </div>
+    <div class="form-group">
+      <input class="form-input" id="ns-search" placeholder="🔍 Buscar cliente por nombre o teléfono..." oninput="searchClientsNS(this.value)" style="font-size:14px;padding:12px">
+    </div>
+    <div id="ns-client-list" style="max-height:220px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap">NUEVO CLIENTE</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Nombre *</label>
+      <input class="form-input" id="ns-name" placeholder="Nombre completo"></div>
+    <div class="form-group"><label class="form-label">Teléfono / WhatsApp</label>
+      <input class="form-input" id="ns-phone" placeholder="300 000 0000" type="tel" inputmode="numeric"></div>
+    <div class="modal-btns" style="flex-direction:column;gap:8px">
+      <button class="btn-primary" onclick="createClientFromNS()" style="width:100%;padding:13px;font-size:14px">
+        ✓ Crear cliente e iniciar venta
+      </button>
+      <button class="btn-cancel" style="width:100%;text-align:center" onclick="closeModal('modal-new-sale')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PRODUCTO -->
+<div class="modal-overlay hidden" id="modal-edit">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar Producto</div>
+    <input type="hidden" id="edit-id">
+    <div class="form-group"><label class="form-label">Nombre</label>
+      <input class="form-input" id="edit-name"></div>
+    <div class="form-group"><label class="form-label">Precio de Venta (COP)</label>
+      <input class="form-input" id="edit-price" type="number"></div>
+    <div class="form-group"><label class="form-label">Margen %</label>
+      <input class="form-input" id="edit-margin" type="number"></div>
+    <div class="form-group"><label class="form-label">Stock</label>
+      <input class="form-input" id="edit-stock" type="number" min="0"></div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('modal-edit')">Cancelar</button>
+      <button class="btn-primary" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR VENTA -->
 <div class="modal-overlay hidden" id="modal-edit-sale">
   <div class="modal">
     <div class="modal-title">✏️ Editar Venta</div>
     <input type="hidden" id="es-id">
     <div class="form-group"><label class="form-label">Producto</label>
-      <div id="es-product-name" style="font-weight:600;font-size:14px;color:var(--text);padding:8px 0"></div>
+      <div id="es-product-name" style="font-weight:600;font-size:14px;color:var(--text);padding:6px 0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Fecha y Hora</label>
+      <input class="form-input" id="es-timestamp" type="datetime-local">
     </div>
     <div class="form-group"><label class="form-label">Cantidad</label>
       <div class="qty-control">
@@ -573,11 +665,21 @@ async function fbDelete(col,id){const url=`${FB_BASE}/${col}/${id}?key=${FB_API_
     <div class="form-group"><label class="form-label">Comprador</label>
       <input class="form-input" id="es-buyer" placeholder="Nombre completo">
     </div>
-    <div class="form-group"><label class="form-label">Teléfono / WhatsApp</label>
+    <div class="form-group"><label class="form-label">Teléfono</label>
       <input class="form-input" id="es-cedula" placeholder="300 000 0000" type="tel" inputmode="numeric">
     </div>
+    <div class="form-group"><label class="form-label">Tipo de pago</label>
+      <select class="form-select" id="es-payment">
+        <option value="">Sin especificar</option>
+        <option value="efectivo">Efectivo</option>
+        <option value="transferencia">Transferencia</option>
+        <option value="nequi">Nequi</option>
+        <option value="daviplata">Daviplata</option>
+        <option value="tarjeta">Tarjeta</option>
+      </select>
+    </div>
     <div class="form-group"><label class="form-label">Notas</label>
-      <input class="form-input" id="es-notes" placeholder="efectivo, transferencia...">
+      <input class="form-input" id="es-notes" placeholder="Notas adicionales...">
     </div>
     <div class="preview-box" id="es-preview"></div>
     <div class="modal-btns">
@@ -793,12 +895,14 @@ function toggleYamileForm(){const f=document.getElementById('yamile-auth');f.sty
 function loginYamile(){const e=document.getElementById('yamile-email').value.trim().toLowerCase();const err=document.getElementById('yamile-err');if(e==='yamicontento@gmail.com'){err.style.display='none';login('Yamile');}else{err.style.display='block';}}
 
 // Client modal
-function openClientModal(){
+async function openClientModal(){
   document.getElementById('new-client-name').value='';
   document.getElementById('new-client-phone').value='';
   document.getElementById('client-search-input').value='';
-  searchClients('');
+  document.getElementById('client-search-list').innerHTML='<div style="text-align:center;color:var(--muted);padding:12px;font-size:13px">⏳ Cargando...</div>';
   document.getElementById('modal-client').classList.remove('hidden');
+  await loadAllClients();
+  searchClients('');
 }
 
 function searchClients(q){
@@ -951,9 +1055,87 @@ async function finalizeCart(){
 
   const total=cartTotal;
   cart=[];
+  activeClient=null;
+  const bar=document.getElementById('active-client-bar');
+  if(bar) bar.style.display='none';
   updateCartBadge();
   renderAll();
-  showToast('✓ Compra finalizada · '+fmt(total));
+  showToast('✓ Compra finalizada · '+fmt(total)+' · Listo para nueva venta 🛒');
+}
+
+// ── NEW SALE FLOW ─────────────────────────────
+async function startNewSale(){
+  cart=[];
+  activeClient=null;
+  const bar=document.getElementById('active-client-bar');
+  if(bar) bar.style.display='none';
+  updateCartBadge();
+  // Open modal immediately
+  document.getElementById('ns-search').value='';
+  document.getElementById('ns-name').value='';
+  document.getElementById('ns-phone').value='';
+  document.getElementById('ns-client-list').innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:13px">⏳ Cargando clientes...</div>';
+  document.getElementById('modal-new-sale').classList.remove('hidden');
+  // Load fresh from Firebase then show
+  await loadAllClients();
+  searchClientsNS('');
+}
+
+function searchClientsNS(q){
+  const list=document.getElementById('ns-client-list');
+  q=(q||'').toLowerCase().trim();
+  const matches=allClients.filter(c=>
+    !q||c.name.toLowerCase().includes(q)||(c.phone||'').includes(q)
+  ).slice(0,6);
+  if(!matches.length){
+    list.innerHTML='<div style="text-align:center;color:var(--muted);padding:10px;font-size:13px">'+(q?'Sin resultados':'No hay clientes aún')+'</div>';
+    return;
+  }
+  list.innerHTML=matches.map(function(c){
+    const initials=c.name.split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+    const tel=c.phone?'<div style="font-size:11px;color:var(--muted)">📱 '+c.phone+'</div>':'';
+    const spent=c.totalSpent?'<div style="font-size:11px;font-weight:700;color:var(--green)">'+fmt(c.totalSpent)+'</div>':'';
+    return '<div class="cs-item" data-cid="'+c.id+'" onclick="selectClientFromNS(this)" style="margin-bottom:6px">'+
+      '<div class="cs-avatar">'+initials+'</div>'+
+      '<div style="flex:1"><div style="font-size:14px;font-weight:700">'+c.name+'</div>'+tel+'</div>'+
+      spent+
+    '</div>';
+  }).join('');
+}
+
+function selectClientFromNS(el){
+  const c=allClients.find(x=>x.id===el.dataset.cid);
+  if(!c)return;
+  setActiveClient(c);
+  closeModal('modal-new-sale');
+  showToast('✓ Venta para: '+c.name+' · Selecciona productos');
+}
+
+async function createClientFromNS(){
+  const name=document.getElementById('ns-name').value.trim();
+  const phone=document.getElementById('ns-phone').value.trim();
+  if(!name){showToast('Ingresa el nombre del cliente',true);return;}
+  const id='CLT-'+Date.now().toString(36).toUpperCase();
+  const client={id,name,phone,createdBy:currentUser,createdAt:new Date().toISOString(),totalSpent:0};
+  allClients.unshift(client);
+  setActiveClient(client);
+  closeModal('modal-new-sale');
+  showToast('✓ Cliente creado: '+name+' · Selecciona productos');
+  try{await fbSet('clients',id,client);}catch(e){console.warn('FB:',e);}
+}
+
+function closeSaleSession(){
+  cart=[];
+  activeClient=null;
+  const bar=document.getElementById('active-client-bar');
+  if(bar) bar.style.display='none';
+  const badge=document.getElementById('cart-count');
+  if(badge) badge.textContent='0';
+  const btn=document.getElementById('acb-cart-btn');
+  if(btn){btn.disabled=true;btn.textContent='🛒 Carrito vacío';}
+  closeModal('modal-cart');
+  renderAll();
+  showToast('✓ Venta cerrada · Cliente desasociado');
 }
 
 async function loadAllClients(){
@@ -967,12 +1149,22 @@ async function loadAllClients(){
       const f=d.fields||{};
       return{id:d.name.split('/').pop(),name:fv(f.name),phone:fv(f.phone),totalSpent:fv(f.totalSpent)||0,createdAt:fv(f.createdAt)};
     }).sort(function(a,b){return b.totalSpent-a.totalSpent;});
-    // Also build from existing sales if no clients yet
-    if(!allClients.length){
-      const byPhone={};
-      sales.forEach(s=>{if(s.buyer){const k=s.cedula||s.buyer;if(!byPhone[k])byPhone[k]={id:'CLT-'+k.replace(/\W/g,''),name:s.buyer,phone:s.cedula||'',totalSpent:0};byPhone[k].totalSpent+=s.total;}});
-      allClients=Object.values(byPhone);
-    }
+    // ALWAYS merge with sales-inferred clients (covers buyers before client system)
+    const existingIds=new Set(allClients.map(function(c){return c.id;}));
+    const byPhone={};
+    sales.forEach(function(s){
+      if(s.buyer){
+        const ph=(s.cedula||'').replace(/\D/g,'');
+        const k=ph||s.buyer;
+        const syntheticId='CLT-SYN-'+k.replace(/\W/g,'').slice(0,12);
+        if(!existingIds.has(syntheticId)&&!existingIds.has(s.clientId||'')){
+          if(!byPhone[k])byPhone[k]={id:syntheticId,name:s.buyer,phone:s.cedula||'',totalSpent:0};
+          byPhone[k].totalSpent+=s.total;
+        }
+      }
+    });
+    const synthetic=Object.values(byPhone);
+    allClients=allClients.concat(synthetic).sort(function(a,b){return b.totalSpent-a.totalSpent;});
   }catch(e){console.warn('loadClients:',e);}
 }
 
@@ -1181,29 +1373,61 @@ function renderInventario(){
   }).join('');}
 
 // ── HISTORIAL ────────────────────────────────
+function getHistFiltered(){
+  const qC=(document.getElementById('h-client')?.value||'').toLowerCase().trim();
+  const qP=(document.getElementById('h-product')?.value||'').toLowerCase().trim();
+  const qPay=(document.getElementById('h-payment')?.value||'').toLowerCase().trim();
+  const qD=document.getElementById('h-date')?.value||'';
+  return [...sales].reverse().filter(function(s){
+    if(qC&&!(s.buyer||'').toLowerCase().includes(qC)&&!(s.cedula||'').includes(qC))return false;
+    if(qP&&!(s.productName||'').toLowerCase().includes(qP))return false;
+    if(qPay){const n=(s.notes||s.payment||'').toLowerCase();if(!n.includes(qPay))return false;}
+    if(qD){const dt=s.timestamp?.toDate?s.timestamp.toDate():new Date(s.timestamp);if(dt.toISOString().slice(0,10)!==qD)return false;}
+    return true;
+  });
+}
+
+function clearHistFilters(){
+  ['h-client','h-product'].forEach(function(id){const el=document.getElementById(id);if(el)el.value='';});
+  ['h-payment','h-date'].forEach(function(id){const el=document.getElementById(id);if(el)el.value='';});
+  renderHistorial();
+}
+
 function renderHistorial(){
   const div=document.getElementById('historial-list');
-  if(!sales.length){div.innerHTML='<div class="empty">Sin ventas aún</div>';return;}
-  div.innerHTML=[...sales].reverse().map(s=>{
+  const filtered=getHistFiltered();
+  const tot=document.getElementById('h-totals');
+  if(tot){
+    const tv=filtered.reduce(function(a,s){return a+s.total;},0);
+    const tm=filtered.reduce(function(a,s){return a+(s.price-s.cost)*s.qty;},0);
+    tot.innerHTML=
+      '<div class="kpi"><div class="kpi-label">Ingresos filtrados</div><div class="kpi-value" style="font-size:16px">'+fmt(tv)+'</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Margen filtrado</div><div class="kpi-value green" style="font-size:16px">'+fmt(tm)+'</div></div>'+
+      '<div class="kpi"><div class="kpi-label">Ventas</div><div class="kpi-value blue" style="font-size:16px">'+filtered.length+'</div></div>';
+  }
+  if(!filtered.length){div.innerHTML='<div class="empty">Sin ventas para este filtro</div>';return;}
+  div.innerHTML=filtered.map(function(s){
     const margen=(s.price-s.cost)*s.qty;
     const dt=s.timestamp?.toDate?s.timestamp.toDate():new Date(s.timestamp);
-    const dtStr=dt.toLocaleDateString('es-CO',{day:'2-digit',month:'short'})+' '+dt.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
-    const buyerInfo=s.buyer?(` · ${s.buyer}`+(s.cedula?' (CC '+s.cedula+')':'')):''
-    return`<div class="sale-row">
-      <div class="sale-top">
-        <div class="sale-product">${s.productName}</div>
-        <div class="sale-amount">${fmt(s.total)}</div>
-      </div>
-      <div class="sale-meta">${dtStr} · <strong>${s.user}</strong>${buyerInfo}${s.notes?' · '+s.notes:''}</div>
-      <div class="sale-bottom">
-        <span class="sale-margin-text">+${fmt(margen)} margen</span>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-edit" onclick="openEditSale('${s.id}')" style="padding:4px 8px;font-size:11px">✏️</button>
-          <button class="btn btn-danger" onclick="deleteSale('${s.id}')" style="padding:4px 8px;font-size:11px">✕</button>
-        </div>
-      </div>
-    </div>`;
+    const dtStr=dt.toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'})+' '+dt.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+    const buyerInfo=s.buyer?' · '+s.buyer+(s.cedula?' ('+s.cedula+')':''):'';
+    const payBadge=s.payment?(' · <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;font-size:10px;padding:1px 5px;font-weight:700">'+s.payment+'</span>'):(s.notes?' · '+s.notes:'');
+    return '<div class="sale-row">'+
+      '<div class="sale-top">'+
+        '<div class="sale-product">'+s.productName+'<span style="font-size:11px;color:var(--muted);margin-left:6px">x'+s.qty+'</span></div>'+
+        '<div class="sale-amount">'+fmt(s.total)+'</div>'+
+      '</div>'+
+      '<div class="sale-meta">'+dtStr+' · <strong>'+s.user+'</strong>'+buyerInfo+payBadge+'</div>'+
+      '<div class="sale-bottom">'+
+        '<span class="sale-margin-text">+'+fmt(margen)+'</span>'+
+        '<div style="display:flex;gap:6px">'+
+          '<button class="btn btn-edit" data-sid="'+s.id+'" onclick="openEditSaleById(this)" style="padding:4px 8px;font-size:11px">✏️</button>'+
+          '<button class="btn btn-danger" data-sid="'+s.id+'" onclick="deleteSaleById(this)" style="padding:4px 8px;font-size:11px">✕</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
   }).join('');}
+
 
 // ── RESUMEN ──────────────────────────────────
 function setDate(d,btn){activeDateFilter=d;document.querySelectorAll('.df-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderResumen();}
@@ -1416,10 +1640,11 @@ async function confirmSale(){
   if(!p||p.stock<sellQty){showToast('Stock insuficiente',true);return;}
   const price=parseFloat(document.getElementById('sell-price').value)||p.price;
   const notes=document.getElementById('sell-notes').value.trim();
+  const payment=document.getElementById('sell-payment')?.value||'';
   // Add to cart instead of saving immediately
   const existing=cart.find(i=>i.productId===p.id&&i.price===price);
   if(existing){existing.qty+=sellQty;}
-  else{cart.push({productId:p.id,productName:p.name,category:p.category,price,cost:p.cost,qty:sellQty,notes});}
+  else{cart.push({productId:p.id,productName:p.name,category:p.category,price,cost:p.cost,qty:sellQty,notes,payment});}
   closeModal('modal-sell');
   updateCartBadge();
   const cartTotal=cart.reduce(function(a,i){return a+i.price*i.qty;},0);
@@ -1557,6 +1782,9 @@ async function saveEditClient() {
 
 let editSaleQty=1;
 
+function openEditSaleById(btn){openEditSale(btn.dataset.sid);}
+function deleteSaleById(btn){deleteSale(btn.dataset.sid);}
+
 function openEditSale(saleId){
   const s=sales.find(x=>x.id===saleId);if(!s)return;
   document.getElementById('es-id').value=saleId;
@@ -1567,6 +1795,12 @@ function openEditSale(saleId){
   document.getElementById('es-buyer').value=s.buyer||'';
   document.getElementById('es-cedula').value=s.cedula||'';
   document.getElementById('es-notes').value=s.notes||'';
+  document.getElementById('es-payment').value=s.payment||'';
+  // Populate datetime-local input
+  const dt=s.timestamp?.toDate?s.timestamp.toDate():new Date(s.timestamp);
+  const tzOffset=dt.getTimezoneOffset()*60000;
+  const localISO=new Date(dt-tzOffset).toISOString().slice(0,16);
+  document.getElementById('es-timestamp').value=localISO;
   updateEditPreview();
   document.getElementById('modal-edit-sale').classList.remove('hidden');
 }
@@ -1601,11 +1835,11 @@ async function saveEditSale(){
   const p=products.find(x=>x.id===s.productId);
   if(p){p.stock-=qtyDiff;p.sold=(p.sold||0)+qtyDiff;}
   // Update sale in memory
-  Object.assign(s,{price:newPrice,qty:editSaleQty,total:newPrice*editSaleQty,buyer:newBuyer,cedula:newCedula,notes:newNotes});
+  Object.assign(s,updates);
   // Save locally
   const st=lGet();
   const ls=st.sales&&st.sales.find(x=>x.id===saleId);
-  if(ls)Object.assign(ls,{price:newPrice,qty:editSaleQty,total:newPrice*editSaleQty,buyer:newBuyer,cedula:newCedula,notes:newNotes});
+  if(ls)Object.assign(ls,updates);
   const lp=st.products&&st.products.find(x=>x.id===s.productId);
   if(lp){lp.stock-=qtyDiff;lp.sold=(lp.sold||0)+qtyDiff;}
   lSave(st);
@@ -1614,7 +1848,9 @@ async function saveEditSale(){
   renderAll();
   // Firebase sync
   try{
-    const updates={price:newPrice,qty:editSaleQty,total:newPrice*editSaleQty,buyer:newBuyer,cedula:newCedula,notes:newNotes};
+    const newPayment=document.getElementById('es-payment').value;
+  const newTimestamp=document.getElementById('es-timestamp').value?new Date(document.getElementById('es-timestamp').value).toISOString():s.timestamp;
+  const updates={price:newPrice,qty:editSaleQty,total:newPrice*editSaleQty,buyer:newBuyer,cedula:newCedula,notes:newNotes,payment:newPayment,timestamp:newTimestamp};
     await fbUpdate('sales',saleId,updates);
     if(p)await fbUpdate('products',s.productId,{stock:p.stock,sold:p.sold});
   }catch(e){console.warn('Firebase sync:',e.message);}
@@ -1721,7 +1957,8 @@ async function saveComment(leadId, comment) {
 let cachedLeads = [];
 
 async function renderClientes() {
-  const q = (document.getElementById('cli-search')?.value||'').toLowerCase();
+  const qName = (document.getElementById('cli-search-name')?.value||'').toLowerCase().trim();
+  const qPhone = (document.getElementById('cli-search-phone')?.value||'').trim();
   // Load leads from Skin Analyzer
   if (!cachedLeads.length) cachedLeads = await loadLeads();
   // Group sales by client
@@ -1738,7 +1975,11 @@ async function renderClientes() {
   });
 
   const clients = Object.values(byClient)
-    .filter(c => !q || c.name.toLowerCase().includes(q) || c.phone.includes(q))
+    .filter(c => {
+      if(qName && !c.name.toLowerCase().includes(qName)) return false;
+      if(qPhone && !(c.phone||'').includes(qPhone)) return false;
+      return true;
+    })
     .sort((a,b) => b.total - a.total);
 
   const div = document.getElementById('clientes-list');
@@ -1755,8 +1996,13 @@ async function renderClientes() {
   const leadsOnly = cachedLeads.filter(l => {
     if (!l.phone) return false;
     const ph = l.phone.replace(/\D/g,'').slice(-8);
-    return !buyerPhones.has(ph);
-  }).filter(l => !q || l.name.toLowerCase().includes(q) || l.phone.includes(q));
+    if(!buyerPhones.has(ph)) {
+      if(qName && !l.name.toLowerCase().includes(qName)) return false;
+      if(qPhone && !l.phone.includes(qPhone)) return false;
+      return true;
+    }
+    return false;
+  });
 
   div.innerHTML = clients.map(c => {
     // Sort sales by date desc
