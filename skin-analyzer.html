@@ -461,6 +461,22 @@ main {
   font-size: 22px; font-weight: 600; color: var(--ink); margin-bottom: 8px;
 }
 .loading-sub { font-size: 13px; color: var(--muted); }
+
+/* MAKEUP VIZ */
+.makeup-viz-card{background:var(--ink);border-radius:20px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;}
+.makeup-viz-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 30% 30%,rgba(200,151,58,.2),transparent);pointer-events:none;}
+.makeup-viz-card>*{position:relative;z-index:1;}
+.viz-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#fff;font-weight:600;margin-bottom:4px;}
+.viz-sub{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px;}
+.viz-btn{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--bronze));border:none;color:var(--ink);font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.viz-btn:disabled{opacity:.5;cursor:not-allowed;}
+.viz-result{margin-top:14px;}
+.viz-loading{text-align:center;padding:20px;color:rgba(255,255,255,.6);font-size:13px;}
+.viz-colors{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3);display:inline-block;cursor:pointer;position:relative;}
+.color-swatch::after{content:attr(title);position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,.5);white-space:nowrap;}
+.viz-face{border-radius:14px;width:100%;max-height:320px;object-fit:cover;display:block;}
+.viz-desc{font-size:12px;color:rgba(255,255,255,.7);margin-top:10px;line-height:1.6;}
 </style>
 </head>
 <body>
@@ -471,8 +487,8 @@ main {
     <div class="brand-name">DR C TUNA™</div>
   </div>
   <div class="header-contact">
-    <div>Yamile <a href="tel:3108051223">310 805 1223</a></div>
-    <div>Milena <a href="tel:3212002456">321 200 2456</a></div>
+    <div>Milena Arcilla</div>
+    <div><a href="tel:3212002456">321 200 2456</a></div>
   </div>
 </header>
 
@@ -779,12 +795,21 @@ function renderQuestion() {
     photoHTML = '<div class="photo-section">' +
       '<label class="photo-label">📸 Foto de tu rostro <span style="background:#ef4444;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;margin-left:6px">Obligatorio</span></label>' +
       '<p style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.5">Necesitamos una foto de tu rostro con buena luz para analizar tu colorimetría y recomendarte los tonos de maquillaje exactos para ti.</p>' +
-      '<div class="photo-upload-area">' +
-        '<input type="file" id="photo-input" accept="image/*" capture="user" onchange="handlePhoto(event)" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">' +
-        '<div class="photo-placeholder" id="photo-placeholder">' + (photoData ? '' : '📸') + '</div>' +
-        '<div class="photo-text" id="photo-text">' + (photoData ? '' : 'Toca para tomar foto o subir desde galería') + '</div>' +
-        '<img id="photo-preview" class="photo-preview" alt="preview" ' + (photoData ? 'src="'+photoData+'" style="display:block"' : '') + '>' +
+      '<div style="background:rgba(255,211,100,.12);border:1.5px solid rgba(200,151,58,.3);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:var(--muted);line-height:1.5">' +
+        '💡 <strong>Tip:</strong> Foto sin maquillaje, con luz natural de frente. Evita filtros o flash.' +
       '</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+        '<button onclick="triggerCamera()" style="flex:1;padding:11px;border:1.5px solid rgba(200,151,58,.3);border-radius:10px;background:rgba(255,255,255,.6);font-size:13px;font-weight:600;color:var(--ink);cursor:pointer">📷 Cámara</button>' +
+        '<button onclick="triggerGallery()" style="flex:1;padding:11px;border:1.5px solid rgba(200,151,58,.3);border-radius:10px;background:rgba(255,255,255,.6);font-size:13px;font-weight:600;color:var(--ink);cursor:pointer">🖼️ Galería</button>' +
+      '</div>' +
+      '<input type="file" id="photo-camera" accept="image/*" capture="environment" onchange="handlePhoto(event)" style="display:none">' +
+      '<input type="file" id="photo-gallery" accept="image/*" onchange="handlePhoto(event)" style="display:none">' +
+      (photoData ?
+        '<img id="photo-preview" src="'+photoData+'" style="width:100%;border-radius:10px;max-height:180px;object-fit:cover;display:block" alt="preview">' +
+        '<button onclick="clearPhoto()" style="margin-top:6px;width:100%;padding:8px;border:1px solid #fecaca;border-radius:8px;background:#fef2f2;color:#dc2626;font-size:12px;font-weight:600;cursor:pointer">✕ Quitar foto</button>'
+        :
+        '<img id="photo-preview" style="display:none" alt="preview">'
+      ) +
       photoStatus +
     '</div>';
   }
@@ -819,6 +844,14 @@ function renderQuestion() {
 }
 
 function triggerPhoto() {}
+function triggerCamera() { document.getElementById('photo-camera').click(); }
+function triggerGallery() { document.getElementById('photo-gallery').click(); }
+function clearPhoto() {
+  photoData = null;
+  document.getElementById('photo-camera').value = '';
+  document.getElementById('photo-gallery').value = '';
+  renderQuestion();
+}
 function handlePhoto(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -1008,9 +1041,46 @@ function analyzeColorimetry(photoBase64) {
         resolve(null);
       }
     };
-    img.onerror = function(){ resolve(null); };
+    img.onerror = function(){
+      // Fallback: use questionnaire-based colorimetry
+      resolve(getColorimetryFromAnswers());
+    };
     img.src = photoBase64;
   });
+}
+
+function getColorimetryFromAnswers() {
+  // Determine based on skin type and concern answers
+  const skinType = answers.skin_type || 'normal';
+  const concern = answers.concern || 'hydration';
+  let season, undertone, skinTone;
+  
+  if (skinType === 'oily' || skinType === 'combination') {
+    undertone = concern === 'spots' ? 'Cálido' : 'Neutro';
+    season = concern === 'spots' ? 'Otoño' : 'Primavera';
+    skinTone = 'Medio';
+  } else if (skinType === 'dry') {
+    undertone = 'Frío';
+    season = concern === 'aging' ? 'Verano' : 'Primavera';
+    skinTone = 'Claro';
+  } else if (skinType === 'sensitive') {
+    undertone = 'Frío';
+    season = 'Verano';
+    skinTone = 'Claro';
+  } else {
+    undertone = 'Neutro';
+    season = 'Primavera';
+    skinTone = 'Medio';
+  }
+  
+  const seasonData = {
+    'Primavera': { bestColors:['Coral','Durazno','Verde manzana','Beige dorado','Turquesa'], avoidColors:['Negro puro','Gris carbón'], lipColors:['Coral vivo','Melocotón','Nude rosado cálido'], blushColors:['Melocotón','Coral suave'], eyeColors:['Dorado','Bronce suave','Verde lima'], farmasiTones:['Matte Liquid 03 Sunset Breeze','Matte Liquid 01 Perfect Rose','Creamy Lipstick 05 Rosewood','BB Glaze 01 Neutral Nude'], colorTips:['Los tonos cálidos y brillantes realzan tu luminosidad','El coral y durazno son perfectos para tus labios','El dorado en ojos potencia tu subtono cálido'] },
+    'Otoño': { bestColors:['Terracota','Mostaza','Café caramelo','Verde oliva','Naranja quemado'], avoidColors:['Rosa bebé','Azul eléctrico'], lipColors:['Terracota','Marrón cálido','Nude tostado'], blushColors:['Terracota suave','Bronze'], eyeColors:['Bronce oscuro','Cobre','Verde oliva'], farmasiTones:['Matte Liquid 03 Sunset Breeze','Creamy Lipstick 08 Spice','BB Glaze 03 Black Cherry'], colorTips:['Los tonos tierra son tu paleta natural','El bronce en ojos potencia tu calidez'] },
+    'Verano': { bestColors:['Rosa palo','Lavanda','Azul grisáceo','Malva','Beige rosado'], avoidColors:['Naranja puro','Amarillo mostaza'], lipColors:['Rosa palo','Malva','Rosado suave'], blushColors:['Rosa suave','Malva claro'], eyeColors:['Gris azulado','Malva','Plateado suave'], farmasiTones:['Matte Liquid 01 Perfect Rose','Matte Liquid 09 Wild Rose','BB Glaze 02 Soft Pink'], colorTips:['Los tonos fríos y suaves armonizan con tu subtono','El rosa palo y malva son perfectos para ti'] },
+    'Invierno': { bestColors:['Negro','Blanco puro','Fucsia','Rojo vivo','Azul marino'], avoidColors:['Beige anaranjado','Coral cálido'], lipColors:['Rojo clásico','Fucsia','Ciruela'], blushColors:['Rosa frío intenso','Frambuesa'], eyeColors:['Negro','Azul marino','Plateado'], farmasiTones:['Matte Liquid 06 Red Love','Creamy Lipstick 13 Ruby','Eye Pencil 01 Black'], colorTips:['Los contrastes fuertes te favorecen','El rojo y fucsia son tus colores de poder'] }
+  };
+  
+  return { season, undertone, skinTone, ...(seasonData[season] || seasonData['Primavera']) };
 }
 
 
@@ -1077,11 +1147,147 @@ async function generateResults() {
     
     await minWait;
   } else {
+    // Even without photo, generate colorimetry from answers
+    colorimetryData = getColorimetryFromAnswers();
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
   
   loading.classList.remove('active');
   renderResults(colorimetryData);
+}
+
+// ── COLOR HELPERS ────────────────────────────────────────────────
+function getLipHex(undertone, type) {
+  const palettes = {
+    'Calido': { lip:'#c87941', blush:'#e8956d', eye:'#8b5a2b', base:'#d4a574' },
+    'Cálido': { lip:'#c87941', blush:'#e8956d', eye:'#8b5a2b', base:'#d4a574' },
+    'Frio':   { lip:'#c2607a', blush:'#e8a0b0', eye:'#6b4c7a', base:'#d4a0a8' },
+    'Frío':   { lip:'#c2607a', blush:'#e8a0b0', eye:'#6b4c7a', base:'#d4a0a8' },
+    'Neutro': { lip:'#b5736e', blush:'#d4967a', eye:'#7a5c4a', base:'#d4a890' }
+  };
+  const p = palettes[undertone] || palettes['Neutro'];
+  return p[type] || '#c87941';
+}
+
+function getMakeupLookSteps(col) {
+  const isWarm = col && (col.undertone === 'Cálido' || col.undertone === 'Calido');
+  const isCool = col && (col.undertone === 'Frío' || col.undertone === 'Frio');
+  return [
+    { emoji:'🧴', product:'Base', instruction: isWarm ? 'Elige un tono cálido beige-dorado que unifique sin verse artificial' : isCool ? 'Usa un tono rosado-neutral con subtono frío' : 'Base neutral beige con subtono equilibrado' },
+    { emoji:'🌸', product:'Rubor', instruction: (col && col.blushColors && col.blushColors[0]) ? col.blushColors[0] + ' — aplica en las manzanas de las mejillas hacia las sienes' : 'Tono melocotón suave en las mejillas' },
+    { emoji:'✨', product:'Iluminador', instruction: isWarm ? 'Dorado champagne en el arco de la ceja y el puente de la nariz' : 'Rosado perla en el arco de la ceja y el lagrimal' },
+    { emoji:'👁', product:'Ojos', instruction: (col && col.eyeColors && col.eyeColors[0]) ? col.eyeColors[0] + ' — difumina en el párpado móvil, marrón en el externo' : 'Marrón cálido difuminado en el párpado' },
+    { emoji:'💋', product:'Labial', instruction: (col && col.lipColors && col.lipColors[0]) ? col.lipColors[0] + ' — el tono perfecto para tu temporada ' + (col.season||'') : 'Nude rosado adaptado a tu tono de piel' }
+  ];
+}
+
+async function generateMakeupLook() {
+  const btn = document.getElementById('gen-look-btn');
+  const result = document.getElementById('viz-result');
+  if (!photoData || !result) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Generando tu look...';
+  result.innerHTML = '<div class="viz-loading">✨ La IA está creando tu look personalizado...<br><small style="opacity:.5">Esto puede tomar 10-15 segundos</small></div>';
+
+  const col = window._lastColorimetry;
+  const lipColor = col && col.lipColors && col.lipColors[0] ? col.lipColors[0] : 'coral suave';
+  const blushColor = col && col.blushColors && col.blushColors[0] ? col.blushColors[0] : 'melocoton';
+  const eyeColor = col && col.eyeColors && col.eyeColors[0] ? col.eyeColors[0] : 'marron calido';
+  const season = col ? col.season : 'Primavera';
+
+  try {
+    const b64 = photoData.includes(',') ? photoData.split(',')[1] : photoData;
+    const mediaType = photoData.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+
+    const prompt = 'Describe en detalle como se veria esta persona con el siguiente maquillaje aplicado: ' +
+      'Labial: ' + lipColor + ', Rubor: ' + blushColor + ', Sombra de ojos: ' + eyeColor + '. ' +
+      'Temporada de colorimetria: ' + season + '. ' +
+      'Describe el look completo como si lo estuvieras viendo: que tanto le favorece cada producto, ' +
+      'como lucen los colores en su tono de piel, que partes de su rostro se realzan, ' +
+      'y como se ve el resultado final en 3-4 oraciones. En espanol, tono calido y motivador.';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.content && data.content[0] && data.content[0].text;
+      if (text) {
+        result.innerHTML =
+          '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu look personalizado ✨</div>' +
+          '<p style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.7">' + text + '</p>' +
+          '</div>';
+        btn.textContent = '🔄 Generar de nuevo';
+        btn.disabled = false;
+        return;
+      }
+    }
+    throw new Error('API error');
+  } catch(e) {
+    // Fallback: show text description based on colorimetry
+    const col = window._lastColorimetry;
+    const steps = col ? getMakeupLookSteps(col) : [];
+    const fallback = 'Con la paleta de tu temporada ' + (col ? col.season : '') + 
+      ', el labial ' + (col && col.lipColors ? col.lipColors[0] : 'nude') + 
+      ' realzaría tu sonrisa armonizando con tu subtono ' + (col ? col.undertone : '') + 
+      '. El rubor ' + (col && col.blushColors ? col.blushColors[0] : 'suave') + 
+      ' daría vida a tus mejillas sin sobrepasarse. En conjunto lograrias un look equilibrado, luminoso y completamente tuyo.';
+    result.innerHTML =
+      '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu look personalizado ✨</div>' +
+      '<p style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.7">' + fallback + '</p>' +
+      '</div>';
+    btn.textContent = '🔄 Intentar de nuevo';
+    btn.disabled = false;
+  }
+}
+
+function getSkinScores(skinType, concern, routine, lifestyle) {
+  // Base scores by skin type
+  const base = {
+    oily:        {hidratacion:45, puntos_negros:75, arrugas:15, rosacea:20, acne:65, manchas:35},
+    dry:         {hidratacion:25, puntos_negros:15, arrugas:60, rosacea:35, acne:10, manchas:40},
+    combination: {hidratacion:50, puntos_negros:55, arrugas:20, rosacea:25, acne:45, manchas:30},
+    normal:      {hidratacion:75, puntos_negros:20, arrugas:15, rosacea:10, acne:15, manchas:20},
+    sensitive:   {hidratacion:45, puntos_negros:20, arrugas:20, rosacea:70, acne:30, manchas:25}
+  }[skinType] || {hidratacion:60, puntos_negros:30, arrugas:20, rosacea:15, acne:20, manchas:25};
+
+  const scores = Object.assign({}, base);
+
+  // Adjust by concern
+  if(concern === 'aging')    { scores.arrugas += 20; scores.manchas += 10; scores.hidratacion -= 10; }
+  if(concern === 'spots')    { scores.manchas += 25; scores.arrugas += 5; }
+  if(concern === 'hydration'){ scores.hidratacion = Math.max(10, scores.hidratacion - 25); }
+  if(concern === 'pores')    { scores.puntos_negros += 20; scores.acne += 10; }
+  if(concern === 'sensitivity'){ scores.rosacea += 20; scores.acne += 10; }
+
+  // Adjust by routine
+  if(routine === 'none')     { scores.hidratacion -= 15; scores.puntos_negros += 10; scores.arrugas += 10; }
+  if(routine === 'basic')    { scores.hidratacion -= 5; }
+  if(routine === 'complete') { scores.hidratacion += 15; scores.arrugas -= 10; scores.manchas -= 10; }
+
+  // Adjust by lifestyle
+  if(lifestyle === 'urban')  { scores.manchas += 10; scores.acne += 8; scores.arrugas += 5; }
+  if(lifestyle === 'sun')    { scores.manchas += 15; scores.arrugas += 10; scores.rosacea += 8; }
+  if(lifestyle === 'indoor') { scores.hidratacion -= 10; scores.arrugas += 5; }
+
+  // Clamp all values 0-100
+  Object.keys(scores).forEach(function(k){
+    scores[k] = Math.max(0, Math.min(100, scores[k]));
+  });
+
+  return scores;
 }
 
 function renderResults(colorimetry) {
@@ -1106,6 +1312,45 @@ function renderResults(colorimetry) {
   html += '<div class="result-skin-type">' + skinTypeLabel + '</div>';
   html += '<div class="result-title">Línea<br>' + rec.line + '</div>';
   html += '<div class="result-subtitle">' + rec.tagline + '</div>';
+  html += '</div>';
+
+  // ── Skin Analysis Scores ─────────────────────────────────────
+  const scores = getSkinScores(answers.skin_type, answers.concern, answers.routine, answers.lifestyle);
+  html += '<div style="background:rgba(255,255,255,.6);border:1px solid rgba(200,151,58,.2);border-radius:16px;padding:18px 20px;margin-bottom:20px">';
+  html += '<div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:14px">📊 Análisis de tu piel</div>';
+  const indicators = [
+    {label:'💧 Hidratación',    key:'hidratacion',  good:true},
+    {label:'⚫ Puntos negros',  key:'puntos_negros', good:false},
+    {label:'📏 Arrugas',       key:'arrugas',       good:false},
+    {label:'🔴 Rosácea',       key:'rosacea',       good:false},
+    {label:'🌿 Acné',          key:'acne',          good:false},
+    {label:'☀️ Manchas',       key:'manchas',       good:false}
+  ];
+  indicators.forEach(function(ind){
+    const val = scores[ind.key] || 0; // 0-100
+    const pct = val;
+    // Color logic: for 'good' indicators (hidratacion) high=green, low=red
+    // for 'bad' indicators (acne etc) high=red, low=green
+    let barColor, statusText, statusColor;
+    if(ind.good) {
+      if(pct >= 70){barColor='#16a34a';statusText='Buena';statusColor='#16a34a';}
+      else if(pct >= 40){barColor='#ea580c';statusText='Moderada';statusColor='#ea580c';}
+      else{barColor='#dc2626';statusText='Baja';statusColor='#dc2626';}
+    } else {
+      if(pct <= 20){barColor='#16a34a';statusText='Sin riesgo';statusColor='#16a34a';}
+      else if(pct <= 50){barColor='#ea580c';statusText='Moderado';statusColor='#ea580c';}
+      else{barColor='#dc2626';statusText='Alto';statusColor='#dc2626';}
+    }
+    html += '<div style="margin-bottom:12px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+    html += '<span style="font-size:13px;font-weight:600;color:var(--ink)">'+ind.label+'</span>';
+    html += '<span style="font-size:11px;font-weight:700;color:'+statusColor+'">'+statusText+'</span>';
+    html += '</div>';
+    html += '<div style="background:rgba(0,0,0,.08);border-radius:6px;height:8px;overflow:hidden">';
+    html += '<div style="height:100%;width:'+pct+'%;background:'+barColor+';border-radius:6px;transition:width .8s ease"></div>';
+    html += '</div>';
+    html += '</div>';
+  });
   html += '</div>';
 
   // Diagnosis
@@ -1211,6 +1456,52 @@ function renderResults(colorimetry) {
     html += '</div>';
   }
 
+  // ── Makeup Visualization ─────────────────────────────────────
+  if (photoData && colorimetry) {
+    const lipColor = (colorimetry.lipColors && colorimetry.lipColors[0]) || 'Rosa natural';
+    const blushColor = (colorimetry.blushColors && colorimetry.blushColors[0]) || 'Melocotón';
+    const eyeColor = (colorimetry.eyeColors && colorimetry.eyeColors[0]) || 'Marrón cálido';
+    html += '<div class="makeup-viz-card">';
+    html += '<div class="viz-title">✨ Tu look ideal</div>';
+    html += '<div class="viz-sub">Visualiza cómo te verías con los tonos recomendados para tu colorimetría</div>';
+
+    // Color palette swatches
+    const swatchColors = [
+      {hex: getLipHex(colorimetry.undertone, 'lip'), label: 'Labial'},
+      {hex: getLipHex(colorimetry.undertone, 'blush'), label: 'Rubor'},
+      {hex: getLipHex(colorimetry.undertone, 'eye'), label: 'Ojos'},
+      {hex: getLipHex(colorimetry.undertone, 'base'), label: 'Base'},
+    ];
+    html += '<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu paleta personalizada</div>';
+    html += '<div class="viz-colors">';
+    swatchColors.forEach(function(sw){
+      html += '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">';
+      html += '<div class="color-swatch" style="background:'+sw.hex+'" title="'+sw.label+'"></div>';
+      html += '<span style="font-size:9px;color:rgba(255,255,255,.4);margin-top:16px">'+sw.label+'</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+
+    // Makeup look description
+    html += '<div style="background:rgba(255,255,255,.06);border-radius:12px;padding:14px;margin-bottom:12px">';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu look paso a paso</div>';
+    const steps = getMakeupLookSteps(colorimetry);
+    steps.forEach(function(step){
+      html += '<div style="display:flex;gap:8px;margin-bottom:7px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">';
+      html += '<span style="color:var(--gold);flex-shrink:0">'+step.emoji+'</span>';
+      html += '<span><strong style="color:#fff">'+step.product+':</strong> '+step.instruction+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+
+    // Generate AI look button
+    html += '<button class="viz-btn" id="gen-look-btn" onclick="generateMakeupLook()">';
+    html += '🪄 Ver mi look con IA';
+    html += '</button>';
+    html += '<div class="viz-result" id="viz-result"></div>';
+    html += '</div>';
+  }
+
   // Tips
   html += '<div class="tips-card">';
   html += '<div class="tips-title">💡 Tips para tu tipo de piel</div>';
@@ -1221,33 +1512,17 @@ function renderResults(colorimetry) {
 
   // Share — WhatsApp FIRST
   html += '<div class="share-card">';
-  html += '<div class="share-title">📲 Compartir tu diagnóstico</div>';
-  html += '<div class="share-sub">Envía tu rutina personalizada directo a WhatsApp</div>';
-  html += '<button class="btn-whatsapp" onclick="shareWhatsApp()" style="margin-bottom:12px;font-size:15px;padding:14px">';
-  html += '💬 Enviar por WhatsApp a ' + (clientData.phone || 'mi número');
+  html += '<div class="share-title">📲 Comparte tu diagnóstico</div>';
+  html += '<div class="share-sub" style="margin-bottom:12px">Guarda tu análisis o compártelo con tu asesora</div>';
+  html += '<button class="btn-whatsapp" onclick="shareWhatsApp()" style="margin-bottom:8px;font-size:14px;padding:13px">';
+  html += '💬 Enviarme a mi WhatsApp (' + (clientData.phone || '...') + ')';
   html += '</button>';
-  html += '<div style="display:flex;align-items:center;gap:8px;margin:4px 0 12px">';
-  html += '<div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>';
-  html += '<span style="font-size:11px;color:var(--muted)">o por correo</span>';
-  html += '<div style="flex:1;height:1px;background:rgba(200,151,58,.2)"></div>';
+  html += '<button onclick="shareToAdvisor()" style="width:100%;padding:13px;border-radius:10px;border:2px solid #25d366;background:#f0fff4;color:#166534;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">';
+  html += '👩‍💼 Compartir con mi asesora de belleza';
+  html += '</button>';
   html += '</div>';
-  html += '<div class="share-field">';
-  html += '<input class="share-input" id="share-email" type="email" placeholder="correo@ejemplo.com" value="' + (clientData.email || '') + '">';
-  html += '<button class="btn-share" onclick="sendEmail()">Enviar →</button>';
-  html += '</div></div>';
 
   // Sorteo banner
-  html += '<div style="background:linear-gradient(135deg,#c8973a,#9b6e2a);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">';
-  html += '<div style="font-size:24px;margin-bottom:8px">🎉</div>';
-  html += '<div style="font-size:17px;color:#fff;font-weight:700;margin-bottom:8px">Sorteo Especial · Mié 27 mayo 2pm</div>';
-  html += '<div style="font-size:13px;color:rgba(255,255,255,.9);line-height:1.8">';
-  html += 'Entre todos los compradores sorteamos:<br>';
-  html += '<strong>✅ Descuentos exclusivos</strong><br>';
-  html += '<strong>✅ Clase skin care y maquillaje</strong> con cosmetóloga y maquilladora profesional<br>';
-  html += '<strong>✅ Cupo Reto 30 Días</strong> para bajar de peso<br>';
-  html += '<em style="font-size:11px;opacity:.8">¡Solo compradores participan!</em>';
-  html += '</div></div>';
-
   // Reto 30 días product bundle card
   // Prices: Gomas Vinagoc 111500, Cafe achicoria (DRC), Gel paprika (DRC)
   // Use approximate prices visible in catalog
@@ -1264,12 +1539,10 @@ function renderResults(colorimetry) {
 
   // Contact
   html += '<div style="background:var(--ink);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">';
-  html += '<div style="font-family:Georgia,serif;font-size:18px;color:#fff;margin-bottom:4px">¿Quieres tus productos hoy?</div>';
-  html += '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Contáctanos y te asesoramos personalmente</div>';
-  html += '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">';
-  html += '<a href="https://wa.me/573108051223" style="background:var(--gold);color:var(--ink);padding:10px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">💬 Yamile · 310 805 1223</a>';
-  html += '<a href="https://wa.me/573212002456" style="background:rgba(255,255,255,.1);color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600">💬 Milena · 321 200 2456</a>';
-  html += '</div></div>';
+  html += '<div style="font-family:Georgia,serif;font-size:18px;color:#fff;margin-bottom:4px">¿Lista para empezar?</div>';
+  html += '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Habla con tu asesora de belleza personalizada</div>';
+  html += '<a href="https://wa.me/573212002456" style="display:block;background:#25d366;color:#fff;padding:13px 16px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;margin-bottom:8px">💬 Contactar a mi asesora de belleza</a>';
+  html += '</div>';
 
   html += '<button class="btn-restart" onclick="restartQuiz()">↺ Hacer otro análisis</button>';
 
@@ -1293,7 +1566,7 @@ function sendEmail() {
     '\n\nTU RUTINA:' +
     '\n' + rutinaEmail +
     '\n\nLista para comenzar tu ritual? Escribenos:' +
-    '\n- Yamile: https://wa.me/573108051223' +
+    
     '\n- Milena: https://wa.me/573212002456' +
     '\n\nCon carino, tu equipo DR C TUNA & Farmasi!';
   window.location.href = 'mailto:' + email + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
@@ -1302,61 +1575,39 @@ function sendEmail() {
 
 function shareWhatsApp() {
   const rec = getRecommendation();
-  const skinTypeLabel = {
-    oily: 'Piel grasa', dry: 'Piel seca', combination: 'Piel mixta',
-    normal: 'Piel normal', sensitive: 'Piel sensible'
-  }[answers.skin_type] || 'Tu tipo de piel';
-
-  const rutina = rec.skincare.map(function(p) {
-    return p.step + '. ' + p.stepLabel + ': ' + p.name;
-  }).join('\n');
-
-  // Get colorimetry from last result if available
-  const lastColorimetry = window._lastColorimetry;
-  const colorSection = lastColorimetry ?
-    '\n\n' +
-    '\ud83c\udfa8 *An\u00e1lisis de Colorimetr\u00eda*' +
-    '\nTemporada: *' + lastColorimetry.season + '* · Subtono ' + lastColorimetry.undertone +
-    '\n\n*Tonos Farmasi recomendados para ti:*' +
-    '\n' + (lastColorimetry.farmasiTones||[]).map(function(t){return '\u2713 '+t;}).join('\n') +
-    '\n\n*Tips de color:*' +
-    '\n' + (lastColorimetry.colorTips||[]).map(function(t){return '\u2022 '+t;}).join('\n')
+  const makeup = getMakeup();
+  const skinLabels = {oily:'Piel grasa',dry:'Piel seca',combination:'Piel mixta',normal:'Piel normal',sensitive:'Piel sensible'};
+  const skinTypeLabel = skinLabels[answers.skin_type] || 'Tu tipo de piel';
+  const sc = getSkinScores(answers.skin_type, answers.concern, answers.routine, answers.lifestyle);
+  function lvl(v,inv){ return inv ? (v<=20?'Sin riesgo':v<=50?'Moderado':'Alto') : (v>=70?'Buena':v>=40?'Moderada':'Baja'); }
+  const rutina = rec.skincare.map(function(p){return p.step+'. '+p.stepLabel+': '+p.name;}).join('\n');
+  const catMap = {'BASES & PRIMER':['Foundation','Primer','Blur','Illuminating','BB Cream','CC Cream','BB Powder'],'CORRECTOR':['Concealer','Corrector'],'LABIALES':['Lipstick','Lip Gloss','Plumper','Glaze'],'RUBOR & CONTORNO':['Blush','Blusher','Contour'],'OJOS':['Mascara','Eye Pencil','Brow'],'FIJADOR':['Locker','Fixing','Spray']};
+  let makeupLines='';
+  Object.keys(catMap).forEach(function(cat){
+    const m=makeup.items.filter(function(i){return catMap[cat].some(function(kw){return i.name.toLowerCase().includes(kw.toLowerCase());});});
+    if(m.length) makeupLines+='\n*'+cat+':* '+m.map(function(i){return i.name;}).join(', ');
+  });
+  const col = window._lastColorimetry;
+  const colorBlock = col
+    ? '\n\n\u{1F3A8} *COLORIMETRIA*\nTemporada: *'+col.season+'* - Subtono: *'+col.undertone+'*\n\nColores que te favorecen:\n'+(col.bestColors||[]).join(' - ')+'\n\nTonos Farmasi para ti:\n'+(col.farmasiTones||[]).map(function(t){return '\u2713 '+t;}).join('\n')+'\n\nTips de color:\n'+(col.colorTips||[]).map(function(t){return '\u2022 '+t;}).join('\n')
     : '';
-
-  const msg = '\u2728 *Diagn\u00f3stico de piel DR C TUNA*' +
-    '\n\nHola ' + (clientData.name || '') + '! \ud83c\udf38' +
-    '\n\n*Tipo de piel:* ' + skinTypeLabel +
-    '\n*L\u00ednea recomendada:* ' + rec.line +
-    '\n_' + rec.tagline + '_' +
-    '\n\n*Tu rutina paso a paso:*\n' + rutina +
-    '\n\n*Maquillaje Farmasi sugerido:*' +
-    '\nBases y productos de larga duraci\u00f3n para tu tipo de piel \ud83d\udc84' +
-    '\n\n_Diagn\u00f3stico personalizado por:_' +
-    '\n\ud83d\udcf2 Yamile Contento: 310 805 1223' +
-    '\n\ud83d\udcf2 Milena Arcilla: 321 200 2456' +
-    '\n\n\u00a1Esc\u00edbenos para conseguir tus productos! \ud83d\udecd' +
-    '\n\n' +
-    '\ud83c\udf89 *SORTEO ESPECIAL - Mi\u00e9rcoles 27 de mayo, 2pm*' +
-    '\nEntre todos los compradores del evento sortearemos:' +
-    '\n\u2705 Descuentos exclusivos' +
-    '\n\u2705 Clase de skin care y maquillaje con cosmet\u00f3loga y maquilladora profesional' +
-    '\n\u2705 Cupo en el *Reto 30 D\u00edas* para bajar de peso' +
-    '\n\n' +
-    '\ud83d\udcaa *RETO 30 D\u00cdAS \u2014 Kit Completo*' +
-    '\nBaja de peso de forma natural con:' +
-    '\n\u2022 Gomas de vinagre de manzana Farmasi' +
-    '\n\u2022 Caf\u00e9 de achicoria DR C TUNA' +
-    '\n\u2022 Gel de paprika DR C TUNA' +
-    '\n\n\u00bfTe interesa el kit? \u00a1Esc\u00edbeme y te doy la informaci\u00f3n!' +
-    '\n\n_\u00a1Solo compradores del evento participan en el sorteo!_ \ud83d\udc95';
-
-  const phone = clientData.phone ? clientData.phone.replace(/\D/g, '') : '';
-  const waNumber = phone.length >= 10 ? '57' + phone.slice(-10) : '';
-  const waUrl = waNumber
-    ? 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(msg)
-    : 'https://wa.me/?text=' + encodeURIComponent(msg);
-  window.open(waUrl, '_blank');
+  const phone = (clientData.phone||'').replace(/\D/g,'');
+  const waNumber = phone.length>=10 ? '57'+phone.slice(-10) : '';
+  const msg = '\u2728 *DIAGNOSTICO PERSONALIZADO*\nDR C TUNA x Farmasi\n\nHola '+(clientData.name||'')+'!\n\n*Tipo de piel:* '+skinTypeLabel+'\n\n\ud83d\udcca *ANALISIS DE TU PIEL:*\n\ud83d\udca7 Hidratacion: '+lvl(sc.hidratacion,false)+'\n\u26ab Puntos negros: '+lvl(sc.puntos_negros,true)+'\n\ud83d\udccf Arrugas: '+lvl(sc.arrugas,true)+'\n\ud83d\udd34 Rosacea: '+lvl(sc.rosacea,true)+'\n\ud83c\udf3f Acne: '+lvl(sc.acne,true)+'\n\u2600\ufe0f Manchas: '+lvl(sc.manchas,true)+'\n\n\ud83c\udf3f *RUTINA DR C TUNA:*\n'+rutina+'\n\n\ud83d\udc84 *MAQUILLAJE FARMASI:*'+makeupLines+colorBlock+'\n\n\ud83d\udcaa *RETO 30 DIAS:*\nKit para bajar de peso natural:\n\u2022 Gomas de Vinagre de Manzana Nutriplus\n\u2022 Cafe de Achicoria DR C TUNA\n\u2022 Gel de Paprika DR C TUNA\nConsultanos el precio del kit \ud83c\udf3f';
+  const waUrl = waNumber ? 'https://wa.me/'+waNumber+'?text='+encodeURIComponent(msg) : 'https://wa.me/?text='+encodeURIComponent(msg);
+  window.open(waUrl,'_blank');
 }
+
+function shareToAdvisor() {
+  const rec = getRecommendation();
+  const col = window._lastColorimetry;
+  const sc = getSkinScores(answers.skin_type, answers.concern, answers.routine, answers.lifestyle);
+  function lvl(v,inv){ return inv ? (v<=20?'Sin riesgo':v<=50?'Moderado':'Alto') : (v>=70?'Buena':v>=40?'Moderada':'Baja'); }
+  const skinLabels = {oily:'Piel grasa',dry:'Piel seca',combination:'Piel mixta',normal:'Piel normal',sensitive:'Piel sensible'};
+  const msg = '\ud83d\udc69\u200d\ud83d\udcbc *DIAGNOSTICO PARA ASESORA*\n\n*Cliente:* '+(clientData.name||'')+(clientData.phone?' | '+clientData.phone:'')+'\n*Piel:* '+(skinLabels[answers.skin_type]||'')+'\n\n*ANALISIS:*\nHidratacion: '+lvl(sc.hidratacion,false)+' | Puntos negros: '+lvl(sc.puntos_negros,true)+'\nArrugas: '+lvl(sc.arrugas,true)+' | Rosacea: '+lvl(sc.rosacea,true)+'\nAcne: '+lvl(sc.acne,true)+' | Manchas: '+lvl(sc.manchas,true)+'\n\n*Linea DR C TUNA:* '+rec.line+(col?'\n*Colorimetria:* Temporada '+col.season+' - Subtono '+col.undertone+'\nTonos Farmasi: '+(col.farmasiTones||[]).join(', '):'');
+  window.open('https://wa.me/573212002456?text='+encodeURIComponent(msg),'_blank');
+}
+
 function restartQuiz() {
   answers = {}; currentQ = 0; photoData = null; clientData = {};
   document.getElementById('results').style.display = 'none';
