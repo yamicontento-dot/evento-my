@@ -857,11 +857,19 @@ function handlePhoto(event) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    photoData = e.target.result;
-    document.getElementById('photo-preview').src = photoData;
-    document.getElementById('photo-preview').style.display = 'block';
-    document.getElementById('photo-placeholder').style.display = 'none';
-    document.getElementById('photo-text').style.display = 'none';
+    const img = new Image();
+    img.onload = function() {
+      // Resize to max 800px wide, keep aspect ratio
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      photoData = canvas.toDataURL('image/jpeg', 0.82);
+      renderQuestion(); // re-render to show preview
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -1156,7 +1164,64 @@ async function generateResults() {
   renderResults(colorimetryData);
 }
 
-// ── COLOR HELPERS ────────────────────────────────────────────────
+// ── PROTOCOL HELPERS ──────────────────────────────────────────────
+function getDayNightProtocol(rec, skinType, concern) {
+  const line = rec.line;
+  // Day protocol - lighter, protective
+  const day = [
+    { step:1, name:'Limpieza suave', desc: skinType==='oily'||skinType==='combination' ? rec.line+' Cleanser · elimina sebo nocturno sin resecar' : rec.line+' Cleanser · limpieza suave respetando la barrera cutánea' },
+    { step:2, name:'Tónico / Essence', desc: line+' Toner · equilibra el pH y prepara la piel para absorber los siguientes pasos' },
+    { step:3, name:'Sérum o tratamiento AM', desc: concern==='spots'||concern==='aging' ? line+' Serum · activos de efecto iluminador y protector' : line+' Serum · hidratación concentrada de acción rápida' },
+    { step:4, name:'Contorno de ojos', desc: line+' Eye Cream · aplica con toque suave del dedo anular, de fuera hacia adentro' },
+    { step:5, name:'Hidratante con SPF', desc: line+' Moisturizer · hidratación y fotoprotección, paso indispensable cada mañana' },
+  ];
+  // Night protocol - reparative
+  const night = [
+    { step:1, name:'Doble limpieza', desc: 'Aceite o balm para retirar maquillaje → '+line+' Cleanser para limpiar la piel en profundidad' },
+    { step:2, name:'Exfoliación (2×semana)', desc: 'Exfoliante químico suave (AHA/BHA) para renovar sin irritar · No usar a diario' },
+    { step:3, name:'Tónico nutritivo', desc: line+' Toner noche · prepara y potencia la absorción de los activos de noche' },
+    { step:4, name:'Sérum nocturno', desc: concern==='aging' ? line+' Retinol Serum · activos reparadores de alta eficacia · introduce gradualmente' : line+' Repair Serum · activos regeneradores que trabajan mientras duermes' },
+    { step:5, name:'Contorno de ojos noche', desc: line+' Eye Cream noche · mayor concentración de activos para la zona más delicada' },
+    { step:6, name:'Crema nutritiva de noche', desc: line+' Night Cream · textura más rica que la de día, nutre y repara durante las 8 horas de sueño' },
+  ];
+  return { day, night };
+}
+
+function getMixedLinesTip(mainLine, concern, skinType) {
+  const combos = [];
+  let intro = 'La piel tiene múltiples necesidades. Puedes combinar líneas DR C TUNA según lo que requieras en cada momento:';
+
+  if (mainLine === 'Tea Tree') {
+    combos.push({ when:'Zona T y poros', how:'Tea Tree Cleanser + Toner en zona T · Aqua Cream en mejillas si son más secas' });
+    combos.push({ when:'Brotes ocasionales', how:'Tea Tree Serum localizado en imperfecciones + Calendula Cream en el resto del rostro para calmar' });
+    combos.push({ when:'Primera señales de edad', how:'Tea Tree para limpieza + Age Reversist Eye Cream para el contorno de ojos' });
+  } else if (mainLine === 'Aqua') {
+    combos.push({ when:'Deshidratación profunda', how:'Aqua Hydra Drops + Aqua Cream · para potenciar hidratación aplica en piel levemente húmeda' });
+    combos.push({ when:'Manchas en piel deshidratada', how:'Aqua Hydra Drops + Lumi Radiance Serum · hidratación + acción despigmentante' });
+    combos.push({ when:'Piel deshidratada que también envejece', how:'Aqua Hydra Drops + Age Reversist Night Cream · hidratación intensa con acción antiedad en la noche' });
+  } else if (mainLine === 'Lumi Radiance') {
+    combos.push({ when:'Manchas + piel sensible', how:'Lumi Radiance Serum + Calendula Cream · trata manchas con protección para pieles reactivas' });
+    combos.push({ when:'Manchas + signos de edad', how:'Lumi Radiance Serum AM + Age Reversist Night Cream PM · doble acción día y noche' });
+    combos.push({ when:'Manchas + piel seca', how:'Lumi Radiance Serum + Aqua Hydra Drops · trata y rehidrata al mismo tiempo' });
+  } else if (mainLine === 'Age Reversist' || mainLine === 'Resurface') {
+    combos.push({ when:'Anti-edad + manchas', how:'Age Reversist Serum + Lumi Radiance Brightening Cream SPF · efecto completo durante el día' });
+    combos.push({ when:'Anti-edad + piel sensible', how:'Age Reversist Cream + Calendula Oil unas gotas mezcladas · potencia sin irritar' });
+    combos.push({ when:'Noche reparadora intensiva', how:'Resurface Retinol Serum + Age Reversist Night Cream · máxima regeneración nocturna' });
+  } else if (mainLine === 'Calendula') {
+    combos.push({ when:'Sensible + deshidratada', how:'Calendula Cream + Aqua Hydra Drops · calma la reactividad y restaura la hidratación' });
+    combos.push({ when:'Sensible con manchas', how:'Calendula Toner + Lumi Radiance Serum en capa fina · trata manchas respetando la sensibilidad' });
+    combos.push({ when:'Brotes rosácea', how:'Calendula Balsam localizado en zonas reactivas + Calendula Cream en el resto' });
+  }
+
+  if (!combos.length) {
+    combos.push({ when:'Necesidad extra de hidratación', how: mainLine+' + Aqua Hydra Drops · mezcla las gotas con tu crema habitual' });
+    combos.push({ when:'Zona específica problemática', how:'Usa '+mainLine+' como base + Tea Tree Serum localizado en imperfecciones' });
+  }
+
+  return { intro, combos };
+}
+
+// ── COLOR HELPERS ─────────────────────────────────────────────────
 function getLipHex(undertone, type) {
   const palettes = {
     'Calido': { lip:'#c87941', blush:'#e8956d', eye:'#8b5a2b', base:'#d4a574' },
@@ -1184,74 +1249,60 @@ function getMakeupLookSteps(col) {
 async function generateMakeupLook() {
   const btn = document.getElementById('gen-look-btn');
   const result = document.getElementById('viz-result');
-  if (!photoData || !result) return;
+  if (!result) return;
   btn.disabled = true;
-  btn.textContent = '⏳ Generando tu look...';
-  result.innerHTML = '<div class="viz-loading">✨ La IA está creando tu look personalizado...<br><small style="opacity:.5">Esto puede tomar 10-15 segundos</small></div>';
+  btn.textContent = '✨ Generando...';
+  result.innerHTML = '<div class="viz-loading">✨ Preparando tu look personalizado...</div>';
+
+  await new Promise(r => setTimeout(r, 1200));
 
   const col = window._lastColorimetry;
-  const lipColor = col && col.lipColors && col.lipColors[0] ? col.lipColors[0] : 'coral suave';
-  const blushColor = col && col.blushColors && col.blushColors[0] ? col.blushColors[0] : 'melocoton';
-  const eyeColor = col && col.eyeColors && col.eyeColors[0] ? col.eyeColors[0] : 'marron calido';
+  const rec = getRecommendation();
+  const steps = col ? getMakeupLookSteps(col) : [];
   const season = col ? col.season : 'Primavera';
+  const undertone = col ? col.undertone : 'Neutro';
+  const lip = col && col.lipColors ? col.lipColors[0] : 'nude rosado';
+  const blush = col && col.blushColors ? col.blushColors[0] : 'melocotón';
+  const eye = col && col.eyeColors ? col.eyeColors[0] : 'marrón cálido';
+  const skinT = col ? col.skinTone : 'Medio';
 
-  try {
-    const b64 = photoData.includes(',') ? photoData.split(',')[1] : photoData;
-    const mediaType = photoData.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+  const lookDesc = buildLookDescription(season, undertone, skinT, lip, blush, eye);
 
-    const prompt = 'Describe en detalle como se veria esta persona con el siguiente maquillaje aplicado: ' +
-      'Labial: ' + lipColor + ', Rubor: ' + blushColor + ', Sombra de ojos: ' + eyeColor + '. ' +
-      'Temporada de colorimetria: ' + season + '. ' +
-      'Describe el look completo como si lo estuvieras viendo: que tanto le favorece cada producto, ' +
-      'como lucen los colores en su tono de piel, que partes de su rostro se realzan, ' +
-      'y como se ve el resultado final en 3-4 oraciones. En espanol, tono calido y motivador.';
+  result.innerHTML =
+    '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-top:10px">' +
+    '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">✨ Tu look ' + season + '</div>' +
+    '<p style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.7;margin-bottom:12px">' + lookDesc + '</p>' +
+    '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Aplicación paso a paso</div>' +
+    steps.map(function(s){
+      return '<div style="display:flex;gap:8px;margin-bottom:7px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">' +
+        '<span style="flex-shrink:0">' + s.emoji + '</span>' +
+        '<span><strong style="color:#fff">' + s.product + ':</strong> ' + s.instruction + '</span></div>';
+    }).join('') +
+    '</div>';
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 400,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      })
-    });
-
-    if (response.ok) {
-      const data = await response.json();
-      const text = data.content && data.content[0] && data.content[0].text;
-      if (text) {
-        result.innerHTML =
-          '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px">' +
-          '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu look personalizado ✨</div>' +
-          '<p style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.7">' + text + '</p>' +
-          '</div>';
-        btn.textContent = '🔄 Generar de nuevo';
-        btn.disabled = false;
-        return;
-      }
-    }
-    throw new Error('API error');
-  } catch(e) {
-    // Fallback: show text description based on colorimetry
-    const col = window._lastColorimetry;
-    const steps = col ? getMakeupLookSteps(col) : [];
-    const fallback = 'Con la paleta de tu temporada ' + (col ? col.season : '') + 
-      ', el labial ' + (col && col.lipColors ? col.lipColors[0] : 'nude') + 
-      ' realzaría tu sonrisa armonizando con tu subtono ' + (col ? col.undertone : '') + 
-      '. El rubor ' + (col && col.blushColors ? col.blushColors[0] : 'suave') + 
-      ' daría vida a tus mejillas sin sobrepasarse. En conjunto lograrias un look equilibrado, luminoso y completamente tuyo.';
-    result.innerHTML =
-      '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-top:10px">' +
-      '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu look personalizado ✨</div>' +
-      '<p style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.7">' + fallback + '</p>' +
-      '</div>';
-    btn.textContent = '🔄 Intentar de nuevo';
-    btn.disabled = false;
-  }
+  btn.textContent = '🔄 Regenerar look';
+  btn.disabled = false;
 }
+
+function buildLookDescription(season, undertone, skinTone, lip, blush, eye) {
+  const isWarm = undertone === 'Cálido' || undertone === 'Calido';
+  const isCool = undertone === 'Frío' || undertone === 'Frio';
+  const seasonDescs = {
+    'Primavera': 'fresco y luminoso, lleno de vida',
+    'Verano': 'suave y romántico, con toque etéreo',
+    'Otoño': 'cálido y sofisticado, con profundidad terrosa',
+    'Invierno': 'dramático y elegante, con contraste definido'
+  };
+  const lookMood = seasonDescs[season] || 'armonioso y equilibrado';
+  const baseDesc = isWarm ? 'una base con subtono dorado que unifica tu tez sin verse artificial' :
+    isCool ? 'una base con subtono rosado que iguala tu tono de manera natural' :
+    'una base neutral que equilibra perfectamente tu tez';
+  return 'Con tu colorimetría de temporada ' + season + ', el resultado sería un look ' + lookMood + '. ' +
+    'Aplicarías ' + baseDesc + '. El labial en tono ' + lip + ' realzaría tu sonrisa sin competir con tu tono de piel. ' +
+    'El rubor en ' + blush + ' daría vida a tus mejillas difuminado hacia las sienes, y las sombras en ' + eye +
+    ' definirían tu mirada con una profundidad muy favorecedora. El resultado: tú misma, pero con una versión más pulida y luminosa.';
+}
+
 
 function getSkinScores(skinType, concern, routine, lifestyle) {
   // Base scores by skin type
@@ -1375,6 +1426,51 @@ function renderResults(colorimetry) {
     html += '</div></div>';
   });
   html += '</div>';
+
+  // ── Day / Night Protocol ─────────────────────────────────────
+  const protocols = getDayNightProtocol(rec, answers.skin_type, answers.concern);
+  html += '<div style="margin-bottom:20px">';
+  html += '<div class="section-title-result">🌅 Protocolo día / 🌙 noche <span>rutina ideal</span></div>';
+
+  // Day protocol
+  html += '<div style="background:linear-gradient(135deg,rgba(255,215,100,.12),rgba(255,170,50,.08));border:1px solid rgba(200,151,58,.25);border-radius:14px;padding:16px;margin-bottom:10px">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🌅 Protocolo de Día</div>';
+  protocols.day.forEach(function(s){
+    html += '<div style="display:flex;gap:10px;margin-bottom:9px;align-items:flex-start">';
+    html += '<span style="background:var(--gold);color:var(--ink);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px">'+s.step+'</span>';
+    html += '<div><div style="font-size:13px;font-weight:600;color:var(--ink)">'+s.name+'</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+s.desc+'</div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Night protocol
+  html += '<div style="background:linear-gradient(135deg,rgba(30,20,60,.06),rgba(60,30,80,.04));border:1px solid rgba(100,80,150,.2);border-radius:14px;padding:16px">';
+  html += '<div style="font-size:12px;font-weight:700;color:#7c4da0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🌙 Protocolo de Noche</div>';
+  protocols.night.forEach(function(s){
+    html += '<div style="display:flex;gap:10px;margin-bottom:9px;align-items:flex-start">';
+    html += '<span style="background:#7c4da0;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px">'+s.step+'</span>';
+    html += '<div><div style="font-size:13px;font-weight:600;color:var(--ink)">'+s.name+'</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+s.desc+'</div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '</div>';
+
+  // ── Mixed Lines Recommendation ────────────────────────────────
+  const mixedLines = getMixedLinesTip(rec.line, answers.concern, answers.skin_type);
+  if (mixedLines) {
+    html += '<div style="background:rgba(61,107,74,.08);border:1px solid rgba(61,107,74,.2);border-radius:14px;padding:16px;margin-bottom:20px">';
+    html += '<div style="font-size:12px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">🔀 Mezcla de líneas según necesidad</div>';
+    html += '<p style="font-size:12px;color:var(--ink);line-height:1.6;margin-bottom:8px">'+mixedLines.intro+'</p>';
+    mixedLines.combos.forEach(function(c){
+      html += '<div style="display:flex;gap:8px;margin-bottom:6px;font-size:12px;color:var(--ink);line-height:1.5">';
+      html += '<span style="color:var(--green);font-size:14px;flex-shrink:0">→</span>';
+      html += '<span><strong>'+c.when+':</strong> '+c.how+'</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
 
   // Makeup
   html += '<div class="makeup-card">';
@@ -1518,7 +1614,7 @@ function renderResults(colorimetry) {
   html += '💬 Enviarme a mi WhatsApp (' + (clientData.phone || '...') + ')';
   html += '</button>';
   html += '<button onclick="shareToAdvisor()" style="width:100%;padding:13px;border-radius:10px;border:2px solid #25d366;background:#f0fff4;color:#166534;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:12px">';
-  html += '👩‍💼 Compartir con mi asesora de belleza';
+  html += '👩‍💼 Compartir con mi Beauty Expert Farmasi';
   html += '</button>';
   html += '</div>';
 
@@ -1540,8 +1636,8 @@ function renderResults(colorimetry) {
   // Contact
   html += '<div style="background:var(--ink);border-radius:16px;padding:20px;text-align:center;margin-bottom:16px">';
   html += '<div style="font-family:Georgia,serif;font-size:18px;color:#fff;margin-bottom:4px">¿Lista para empezar?</div>';
-  html += '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Habla con tu asesora de belleza personalizada</div>';
-  html += '<a href="https://wa.me/573212002456" style="display:block;background:#25d366;color:#fff;padding:13px 16px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;margin-bottom:8px">💬 Contactar a mi asesora de belleza</a>';
+  html += '<div style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px">Habla con tu Beauty Expert Farmasi personalizada</div>';
+  html += '<a href="https://wa.me/573212002456" style="display:block;background:#25d366;color:#fff;padding:13px 16px;border-radius:10px;text-decoration:none;font-size:14px;font-weight:700;margin-bottom:8px">💬 Contactar a mi Beauty Expert Farmasi</a>';
   html += '</div>';
 
   html += '<button class="btn-restart" onclick="restartQuiz()">↺ Hacer otro análisis</button>';
