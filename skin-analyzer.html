@@ -462,20 +462,7 @@ main {
 }
 .loading-sub { font-size: 13px; color: var(--muted); }
 
-/* MAKEUP VIZ */
-.makeup-viz-card{background:var(--ink);border-radius:20px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;}
-.makeup-viz-card::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 30% 30%,rgba(200,151,58,.2),transparent);pointer-events:none;}
-.makeup-viz-card>*{position:relative;z-index:1;}
-.viz-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#fff;font-weight:600;margin-bottom:4px;}
-.viz-sub{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:14px;}
-.viz-btn{width:100%;padding:13px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--bronze));border:none;color:var(--ink);font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.viz-btn:disabled{opacity:.5;cursor:not-allowed;}
-.viz-result{margin-top:14px;}
-.viz-loading{text-align:center;padding:20px;color:rgba(255,255,255,.6);font-size:13px;}
-.viz-colors{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-.color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.3);display:inline-block;cursor:pointer;position:relative;}
-.color-swatch::after{content:attr(title);position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:rgba(255,255,255,.5);white-space:nowrap;}
-.viz-face{border-radius:14px;width:100%;max-height:320px;object-fit:cover;display:block;}
+
 .viz-desc{font-size:12px;color:rgba(255,255,255,.7);margin-top:10px;line-height:1.6;}
 </style>
 </head>
@@ -1167,23 +1154,75 @@ async function generateResults() {
 // ── PROTOCOL HELPERS ──────────────────────────────────────────────
 function getDayNightProtocol(rec, skinType, concern) {
   const line = rec.line;
-  // Day protocol - lighter, protective
+
+  // Exact product names per line from DR C TUNA catalog
+  const catalog = {
+    'Tea Tree':      { cleanser:'Dr. C. Tuna Tea Tree Face Wash',      toner:'Dr. C. Tuna Tea Tree Face Toner',     serum:'Dr. C. Tuna Tea Tree Serum',                  eye:'Dr. C. Tuna Tea Tree Face Cream',        moistDay:'Dr. C. Tuna Tea Tree Face Cream',    moistNight:'Dr. C. Tuna Tea Tree Cream Balsam', oil:null,                                 exfoliator:null },
+    'Aqua':          { cleanser:'Dr. C. Tuna Aqua Restoring Gel Cleanser', toner:'Dr. C. Tuna Aqua Boosting Hydra Drops', serum:'Dr. C. Tuna Aqua Boosting Hydra Drops', eye:'Dr. C. Tuna Aqua Revitalizing Eye Cream', moistDay:'Dr. C. Tuna Aqua Hydrating Cream', moistNight:'Dr. C. Tuna Aqua Hydrating Cream',  oil:null,                                 exfoliator:null },
+    'Calendula':     { cleanser:'Dr. C. Tuna Calendula Face Wash',      toner:'Dr. C. Tuna Calendula Face Toner',    serum:'Dr. C. Tuna Calendula Oil',               eye:'Dr. C. Tuna Calendula Face Cream',       moistDay:'Dr. C. Tuna Calendula Face Cream', moistNight:'Dr. C. Tuna Calendula Cream Balsam', oil:'Dr. C. Tuna Calendula Oil',          exfoliator:null },
+    'Lumi Radiance': { cleanser:'Dr. C. Tuna Lumi Radiance Gel Cleanser', toner:'Dr. C. Tuna Lumi Radiance Brightening Toner', serum:'Dr. C. Tuna Lumi Radiance Brightening Serum', eye:'Dr. C. Tuna Lumi Radiance Eye Balm', moistDay:'Dr. C. Tuna Lumi Radiance Brightening Cream', moistNight:'Dr. C. Tuna Lumi Radiance Brightening Cream', oil:null, exfoliator:null },
+    'Age Reversist': { cleanser:'Dr. C. Tuna Age Reversist Exfoliating Cleanser', toner:'Dr. C. Tuna Age Reversist Beauty Essence Tonic', serum:'Dr. C. Tuna Age Reversist Instant',    eye:'Dr. C. Tuna Age Reversist Eye Cream', moistDay:'Dr. C. Tuna Age Reversist',        moistNight:'Dr. C. Tuna Age Reversist All Night', oil:null, exfoliator:'Dr. C. Tuna Age Reversist Exfoliating Cleanser' },
+    'Resurface':     { cleanser:'Dr. C. Tuna Resurface Refining Cleanser', toner:'Dr. C. Tuna Resurface Hydrasooth Essence', serum:'Dr. C. Tuna Resurface Retinol Reviving Serum', eye:'Dr. C. Tuna Resurface Advanced Eye Cream', moistDay:'Dr. C. Tuna Resurface Essential Day Cream', moistNight:'Dr. C. Tuna Resurface Reset Night Cream', oil:null, exfoliator:'Dr. C. Tuna Resurface Refining Cleanser' },
+  };
+
+  const p = catalog[line] || catalog['Aqua'];
+
   const day = [
-    { step:1, name:'Limpieza suave', desc: skinType==='oily'||skinType==='combination' ? rec.line+' Cleanser · elimina sebo nocturno sin resecar' : rec.line+' Cleanser · limpieza suave respetando la barrera cutánea' },
-    { step:2, name:'Tónico / Essence', desc: line+' Toner · equilibra el pH y prepara la piel para absorber los siguientes pasos' },
-    { step:3, name:'Sérum o tratamiento AM', desc: concern==='spots'||concern==='aging' ? line+' Serum · activos de efecto iluminador y protector' : line+' Serum · hidratación concentrada de acción rápida' },
-    { step:4, name:'Contorno de ojos', desc: line+' Eye Cream · aplica con toque suave del dedo anular, de fuera hacia adentro' },
-    { step:5, name:'Hidratante con SPF', desc: line+' Moisturizer · hidratación y fotoprotección, paso indispensable cada mañana' },
+    { step:1, name:'Limpieza',
+      product: p.cleanser,
+      desc: skinType==='oily'||skinType==='combination'
+        ? 'Mañana y noche · elimina sebo sin resecar'
+        : skinType==='sensitive'
+        ? 'Limpieza ultra suave · respeta la barrera cutánea'
+        : 'Limpieza suave que preserva el equilibrio natural de la piel' },
+    { step:2, name:'Tónico / Esencia',
+      product: p.toner,
+      desc:'Aplica con palmadas suaves · equilibra el pH y prepara la piel para absorber los siguientes pasos' },
+    { step:3, name:'Sérum',
+      product: p.serum,
+      desc: line==='Lumi Radiance' ? 'Activos iluminadores y despigmentantes · aplica en capa fina'
+        : line==='Age Reversist'||line==='Resurface' ? 'Activos antiedad y regeneradores · introduce gradualmente si contiene retinol'
+        : 'Hidratación concentrada de absorción rápida · aplica antes de la crema' },
+    { step:4, name:'Contorno de ojos',
+      product: p.eye,
+      desc:'Toque suave con el dedo anular · de fuera hacia adentro · zona más delicada del rostro' },
+    { step:5, name:'Hidratante de día',
+      product: p.moistDay,
+      desc:'Hidratación activa · úsala siempre como último paso antes del maquillaje o protector solar' },
   ];
-  // Night protocol - reparative
+
   const night = [
-    { step:1, name:'Doble limpieza', desc: 'Aceite o balm para retirar maquillaje → '+line+' Cleanser para limpiar la piel en profundidad' },
-    { step:2, name:'Exfoliación (2×semana)', desc: 'Exfoliante químico suave (AHA/BHA) para renovar sin irritar · No usar a diario' },
-    { step:3, name:'Tónico nutritivo', desc: line+' Toner noche · prepara y potencia la absorción de los activos de noche' },
-    { step:4, name:'Sérum nocturno', desc: concern==='aging' ? line+' Retinol Serum · activos reparadores de alta eficacia · introduce gradualmente' : line+' Repair Serum · activos regeneradores que trabajan mientras duermes' },
-    { step:5, name:'Contorno de ojos noche', desc: line+' Eye Cream noche · mayor concentración de activos para la zona más delicada' },
-    { step:6, name:'Crema nutritiva de noche', desc: line+' Night Cream · textura más rica que la de día, nutre y repara durante las 8 horas de sueño' },
+    { step:1, name:'Doble limpieza',
+      product: p.cleanser + ' (2 pasos)',
+      desc:'Primero: desmaquillante o aceite retira restos. Segundo: '+ p.cleanser +' limpia en profundidad' },
+    ...( (line==='Age Reversist'||line==='Resurface') && p.exfoliator ? [
+      { step:2, name:'Exfoliación (2×semana)',
+        product: p.exfoliator,
+        desc:'Solo martes y viernes · renueva la piel sin irritar · no usar en piel sensible activa' }
+    ] : [] ),
+    { step: (line==='Age Reversist'||line==='Resurface') ? 3 : 2, name:'Tónico / Esencia',
+      product: p.toner,
+      desc:'Potencia la absorción de los activos nocturnos · aplica antes del sérum' },
+    { step: (line==='Age Reversist'||line==='Resurface') ? 4 : 3, name:'Sérum nocturno',
+      product: p.serum,
+      desc: line==='Resurface' ? 'Retinol Reviving Serum · introduce 2×semana, aumenta gradualmente'
+        : line==='Age Reversist' ? 'Activos antiedad de alta concentración · trabajan durante las 8h de sueño'
+        : 'Activos regeneradores nocturnos de alto rendimiento' },
+    { step: (line==='Age Reversist'||line==='Resurface') ? 5 : 4, name:'Contorno de ojos',
+      product: p.eye,
+      desc:'Mayor concentración de activos para la zona periocular' },
+    { step: (line==='Age Reversist'||line==='Resurface') ? 6 : 5, name:'Crema de noche',
+      product: p.moistNight,
+      desc: skinType==='dry'||skinType==='sensitive'
+        ? 'Textura rica · nutre y regenera mientras duermes'
+        : 'Regeneración activa nocturna sin sensación pesada' },
+    ...( p.oil && (skinType==='dry'||skinType==='sensitive') ? [
+      { step:6, name:'Aceite facial (opcional)',
+        product: p.oil,
+        desc:'2-3 gotas mezcladas con la crema · potencia la nutrición nocturna · ideal piel seca o madura' }
+    ] : [] ),
   ];
+
   return { day, night };
 }
 
@@ -1246,43 +1285,8 @@ function getMakeupLookSteps(col) {
   ];
 }
 
-async function generateMakeupLook() {
-  const btn = document.getElementById('gen-look-btn');
-  const result = document.getElementById('viz-result');
-  if (!result) return;
-  btn.disabled = true;
-  btn.textContent = '✨ Generando...';
-  result.innerHTML = '<div class="viz-loading">✨ Preparando tu look personalizado...</div>';
 
-  await new Promise(r => setTimeout(r, 1200));
 
-  const col = window._lastColorimetry;
-  const rec = getRecommendation();
-  const steps = col ? getMakeupLookSteps(col) : [];
-  const season = col ? col.season : 'Primavera';
-  const undertone = col ? col.undertone : 'Neutro';
-  const lip = col && col.lipColors ? col.lipColors[0] : 'nude rosado';
-  const blush = col && col.blushColors ? col.blushColors[0] : 'melocotón';
-  const eye = col && col.eyeColors ? col.eyeColors[0] : 'marrón cálido';
-  const skinT = col ? col.skinTone : 'Medio';
-
-  const lookDesc = buildLookDescription(season, undertone, skinT, lip, blush, eye);
-
-  result.innerHTML =
-    '<div style="background:rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-top:10px">' +
-    '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">✨ Tu look ' + season + '</div>' +
-    '<p style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.7;margin-bottom:12px">' + lookDesc + '</p>' +
-    '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Aplicación paso a paso</div>' +
-    steps.map(function(s){
-      return '<div style="display:flex;gap:8px;margin-bottom:7px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">' +
-        '<span style="flex-shrink:0">' + s.emoji + '</span>' +
-        '<span><strong style="color:#fff">' + s.product + ':</strong> ' + s.instruction + '</span></div>';
-    }).join('') +
-    '</div>';
-
-  btn.textContent = '🔄 Regenerar look';
-  btn.disabled = false;
-}
 
 function buildLookDescription(season, undertone, skinTone, lip, blush, eye) {
   const isWarm = undertone === 'Cálido' || undertone === 'Calido';
@@ -1436,10 +1440,13 @@ function renderResults(colorimetry) {
   html += '<div style="background:linear-gradient(135deg,rgba(255,215,100,.12),rgba(255,170,50,.08));border:1px solid rgba(200,151,58,.25);border-radius:14px;padding:16px;margin-bottom:10px">';
   html += '<div style="font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🌅 Protocolo de Día</div>';
   protocols.day.forEach(function(s){
-    html += '<div style="display:flex;gap:10px;margin-bottom:9px;align-items:flex-start">';
+    html += '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">';
     html += '<span style="background:var(--gold);color:var(--ink);border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px">'+s.step+'</span>';
-    html += '<div><div style="font-size:13px;font-weight:600;color:var(--ink)">'+s.name+'</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+s.desc+'</div></div>';
+    html += '<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:12px;font-weight:700;color:var(--gold)">'+s.name+'</span>';
+    html += '<span style="font-size:11px;font-weight:700;color:var(--primary)">'+s.price+'</span></div>';
+    html += '<div style="font-size:13px;font-weight:600;color:var(--ink);margin-top:1px">'+s.product+'</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+s.desc+'</div></div>';
     html += '</div>';
   });
   html += '</div>';
@@ -1448,10 +1455,13 @@ function renderResults(colorimetry) {
   html += '<div style="background:linear-gradient(135deg,rgba(30,20,60,.06),rgba(60,30,80,.04));border:1px solid rgba(100,80,150,.2);border-radius:14px;padding:16px">';
   html += '<div style="font-size:12px;font-weight:700;color:#7c4da0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">🌙 Protocolo de Noche</div>';
   protocols.night.forEach(function(s){
-    html += '<div style="display:flex;gap:10px;margin-bottom:9px;align-items:flex-start">';
+    html += '<div style="display:flex;gap:10px;margin-bottom:10px;align-items:flex-start">';
     html += '<span style="background:#7c4da0;color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px">'+s.step+'</span>';
-    html += '<div><div style="font-size:13px;font-weight:600;color:var(--ink)">'+s.name+'</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-top:1px">'+s.desc+'</div></div>';
+    html += '<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:12px;font-weight:700;color:#9b6ec8">'+s.name+'</span>';
+    html += '<span style="font-size:11px;font-weight:700;color:var(--primary)">'+s.price+'</span></div>';
+    html += '<div style="font-size:13px;font-weight:600;color:var(--ink);margin-top:1px">'+s.product+'</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+s.desc+'</div></div>';
     html += '</div>';
   });
   html += '</div>';
@@ -1549,52 +1559,6 @@ function renderResults(colorimetry) {
       });
     }
 
-    html += '</div>';
-  }
-
-  // ── Makeup Visualization ─────────────────────────────────────
-  if (photoData && colorimetry) {
-    const lipColor = (colorimetry.lipColors && colorimetry.lipColors[0]) || 'Rosa natural';
-    const blushColor = (colorimetry.blushColors && colorimetry.blushColors[0]) || 'Melocotón';
-    const eyeColor = (colorimetry.eyeColors && colorimetry.eyeColors[0]) || 'Marrón cálido';
-    html += '<div class="makeup-viz-card">';
-    html += '<div class="viz-title">✨ Tu look ideal</div>';
-    html += '<div class="viz-sub">Visualiza cómo te verías con los tonos recomendados para tu colorimetría</div>';
-
-    // Color palette swatches
-    const swatchColors = [
-      {hex: getLipHex(colorimetry.undertone, 'lip'), label: 'Labial'},
-      {hex: getLipHex(colorimetry.undertone, 'blush'), label: 'Rubor'},
-      {hex: getLipHex(colorimetry.undertone, 'eye'), label: 'Ojos'},
-      {hex: getLipHex(colorimetry.undertone, 'base'), label: 'Base'},
-    ];
-    html += '<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu paleta personalizada</div>';
-    html += '<div class="viz-colors">';
-    swatchColors.forEach(function(sw){
-      html += '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">';
-      html += '<div class="color-swatch" style="background:'+sw.hex+'" title="'+sw.label+'"></div>';
-      html += '<span style="font-size:9px;color:rgba(255,255,255,.4);margin-top:16px">'+sw.label+'</span>';
-      html += '</div>';
-    });
-    html += '</div></div>';
-
-    // Makeup look description
-    html += '<div style="background:rgba(255,255,255,.06);border-radius:12px;padding:14px;margin-bottom:12px">';
-    html += '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tu look paso a paso</div>';
-    const steps = getMakeupLookSteps(colorimetry);
-    steps.forEach(function(step){
-      html += '<div style="display:flex;gap:8px;margin-bottom:7px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.4">';
-      html += '<span style="color:var(--gold);flex-shrink:0">'+step.emoji+'</span>';
-      html += '<span><strong style="color:#fff">'+step.product+':</strong> '+step.instruction+'</span>';
-      html += '</div>';
-    });
-    html += '</div>';
-
-    // Generate AI look button
-    html += '<button class="viz-btn" id="gen-look-btn" onclick="generateMakeupLook()">';
-    html += '🪄 Ver mi look con IA';
-    html += '</button>';
-    html += '<div class="viz-result" id="viz-result"></div>';
     html += '</div>';
   }
 
